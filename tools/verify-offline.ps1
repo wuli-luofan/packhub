@@ -4,8 +4,13 @@
 
 .DESCRIPTION
     No network and no Minecraft dependency required. This proves the project's own code is
-    free of coding errors; it does NOT replace `gradlew build` (real API validation must run
-    on a machine that can download the toolchain).
+    free of coding errors; it does NOT replace `gradlew build` (real API validation happens in CI).
+
+    Notes:
+      * The API stubs mirror the Minecraft 26.3 shapes we rely on.
+      * Loader-specific networking classes (FabricNetwork / NeoForgeNetwork) are EXCLUDED here:
+        their Fabric/NeoForge network APIs cannot be represented by hand-written stubs, so they
+        are validated by the GitHub Actions build instead.
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\tools\verify-offline.ps1 -Jdk25 "$env:APPDATA\.minecraft\runtime\java-runtime-epsilon"
@@ -35,6 +40,17 @@ $sources += Get-ChildItem (Join-Path $root 'tools\api-stubs') -Recurse -Filter *
 $sources += Get-ChildItem (Join-Path $root 'common\src\main\java') -Recurse -Filter *.java | ForEach-Object { $_.FullName }
 $sources += Get-ChildItem (Join-Path $root 'fabric\src\main\java') -Recurse -Filter *.java | ForEach-Object { $_.FullName }
 $sources += Get-ChildItem (Join-Path $root 'neoforge\src\main\java') -Recurse -Filter *.java | ForEach-Object { $_.FullName }
+
+# Only the real loader network implementations are skipped (their Fabric/NeoForge APIs cannot be
+# represented by stubs). tools/api-stubs contains stand-ins with the same class names for local use.
+$excludedPaths = @(
+    'fabric\src\main\java\com\packhub\fabric\FabricNetwork.java',
+    'neoforge\src\main\java\com\packhub\neoforge\NeoForgeNetwork.java'
+)
+$sources = $sources | Where-Object {
+    $full = $_
+    -not ($excludedPaths | Where-Object { $full.EndsWith($_) })
+}
 
 $argFile = Join-Path $OutputDir 'sources.txt'
 [System.IO.File]::WriteAllLines($argFile, $sources, (New-Object System.Text.UTF8Encoding($false)))

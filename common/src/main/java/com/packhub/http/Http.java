@@ -29,7 +29,7 @@ public final class Http {
         public int connectTimeoutSeconds = 15;
         public int readTimeoutSeconds = 60;
         public int retries = 3;
-        public String userAgent = "packhub/1.0.0 (Minecraft mod)";
+        public String userAgent = "packhub/1.0.2 (Minecraft mod)";
         public final Map<String, String> headers = new LinkedHashMap<>();
 
         public Options connectTimeout(int seconds) {

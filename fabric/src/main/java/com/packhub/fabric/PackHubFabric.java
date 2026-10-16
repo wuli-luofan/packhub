@@ -21,6 +21,8 @@ public final class PackHubFabric implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         LogBridge.install();
+        // 先注册联机通道，再初始化内核（SyncManager 会用到它）
+        FabricNetwork.register();
         PackHub.init(new FabricPlatform());
 
         // 键位构造走反射兼容层：不同版本 KeyMapping 的分类参数类型不同

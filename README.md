@@ -34,8 +34,8 @@ Minecraft 跑在 JVM 上，模组类一经加载就无法卸载，Mixin 也在�
 1. 安装 **Fabric Loader ≥ 0.19.5**（或 **NeoForge 26.3.0.77+**）和 **Minecraft 26.3**。
 2. Fabric 用户还需要 **[Fabric API](https://modrinth.com/mod/fabric-api)**。
 3. 把下面这个 jar 丢进 `.minecraft/mods/`：
-   - Fabric：`packhub-fabric-1.0.0.jar`
-   - NeoForge：`packhub-neoforge-1.0.0.jar`
+   - Fabric：`packhub-fabric-1.0.2.jar`
+   - NeoForge：`packhub-neoforge-1.0.2.jar`
 4. 想要光影生效，Fabric 装 Iris，NeoForge 装 Oculus（PackHub 会自动检测并调用它们的重载接口）。
 
 > 两个 jar 是同一套代码在两个加载器上分别编译的产物，**只用装对应加载器的那个**，不要同时装。
@@ -124,13 +124,13 @@ gradlew :smoke:verifyAll  # 上面三个一起跑
 产物：
 
 ```
-fabric/build/libs/packhub-fabric-1.0.0.jar
-neoforge/build/libs/packhub-neoforge-1.0.0.jar
+fabric/build/libs/packhub-fabric-1.0.2.jar
+neoforge/build/libs/packhub-neoforge-1.0.2.jar
 ```
 
 > **两个 jar 已经构建好了**：<https://github.com/wuli-luofan/packhub/actions> 里最新一次运行
 > （runs/38840490248，结论 `success`）的 **Artifacts → packhub-jars** 可以下载到
-> `packhub-fabric-1.0.0.jar` 与 `packhub-neoforge-1.0.0.jar`。
+> `packhub-fabric-1.0.2.jar` 与 `packhub-neoforge-1.0.2.jar`。
 > 本机没法跑 `gradlew build` 只是因为出口网络会掐断 maven.fabricmc.net 的大文件（第七节有实测数据），
 > 在能访问该仓库的机器上 `gradlew build` 是正常的。
 
@@ -209,8 +209,8 @@ PackHub 定义了一种“不会触碰 Mixin、因此可以真正热加载”的
 
 | 文件 | 大小 | 校验过的内容 |
 | --- | --- | --- |
-| `packhub-fabric-1.0.0.jar` | 184,403 字节 | 88 个条目；含 `fabric.mod.json`（入口 `com.packhub.fabric.PackHubFabric`，`minecraft ~26.3`，`java >=25`）、`com/packhub/**`、图标、中英语言文件 |
-| `packhub-neoforge-1.0.0.jar` | 182,643 字节 | 88 个条目；含 `META-INF/neoforge.mods.toml`（入口 `com.packhub.neoforge.PackHubNeoForge`，`neoforge >=26.3`）、`com/packhub/**`、图标、中英语言文件 |
+| `packhub-fabric-1.0.2.jar` | 184,403 字节 | 88 个条目；含 `fabric.mod.json`（入口 `com.packhub.fabric.PackHubFabric`，`minecraft ~26.3`，`java >=25`）、`com/packhub/**`、图标、中英语言文件 |
+| `packhub-neoforge-1.0.2.jar` | 182,643 字节 | 88 个条目；含 `META-INF/neoforge.mods.toml`（入口 `com.packhub.neoforge.PackHubNeoForge`，`neoforge >=26.3`）、`com/packhub/**`、图标、中英语言文件 |
 | 两个 `-sources.jar` | 约 90 KB | 源码 jar |
 
 同时 CI 里 **离线逻辑测试 16/16、Mock 服务器测试 13/13 也都是 passed**（每个 Gradle 步骤的结论都是 success）。

@@ -18,7 +18,7 @@ my-plugin.jar
 {
   "id": "my-plugin",
   "name": "My Plugin",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "main": "com.example.MyPlugin",
   "apiVersion": 1,
   "description": "演示插件",
@@ -107,7 +107,7 @@ plugins { id 'java' }
 java { toolchain { languageVersion = JavaLanguageVersion.of(25) } }
 
 dependencies {
-    compileOnly files('libs/packhub-fabric-1.0.0.jar')   // 或 neoforge 版
+    compileOnly files('libs/packhub-fabric-1.0.2.jar')   // 或 neoforge 版
 }
 ```
 

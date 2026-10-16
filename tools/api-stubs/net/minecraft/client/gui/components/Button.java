@@ -2,6 +2,7 @@ package net.minecraft.client.gui.components;
 import net.minecraft.network.chat.Component;
 public class Button {
     public boolean active = true;
+    public boolean visible = true;
     private Component message;
     public void setMessage(Component message) { this.message = message; }
     public Component getMessage() { return message; }

@@ -26,6 +26,8 @@ public final class PackHubNeoForge {
 
     public PackHubNeoForge(IEventBus modEventBus, ModContainer container) {
         LogBridge.install();
+        // 先注册联机通道，再初始化内核
+        NeoForgeNetwork.register(modEventBus);
         PackHub.init(new NeoForgePlatform());
         modEventBus.addListener(this::onRegisterKeyMappings);
     }

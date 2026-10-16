@@ -24,10 +24,10 @@
 
 | 产物 | 大小 | 校验内容 |
 | --- | --- | --- |
-| `packhub-fabric-1.0.0.jar` | 184,403 字节 | 88 个条目；`fabric.mod.json`（`id=packhub`、`version=1.0.0`、入口 `com.packhub.fabric.PackHubFabric`、`minecraft ~26.3`、`java >=25`、`environment=client`）；`com/packhub/**`；`assets/packhub/icon.png`；中英 `lang` |
-| `packhub-neoforge-1.0.0.jar` | 182,643 字节 | 88 个条目；`META-INF/neoforge.mods.toml`（`modId=packhub`、入口 `com.packhub.neoforge.PackHubNeoForge`、`neoforge >=26.3`、`minecraft [26.3,26.4)`）；`com/packhub/**`；图标；中英 `lang` |
-| `packhub-fabric-1.0.0-sources.jar` | 89,900 字节 | 源码 jar |
-| `packhub-neoforge-1.0.0-sources.jar` | 90,000 字节 | 源码 jar |
+| `packhub-fabric-1.0.2.jar` | 184,403 字节 | 88 个条目；`fabric.mod.json`（`id=packhub`、`version=1.0.2`、入口 `com.packhub.fabric.PackHubFabric`、`minecraft ~26.3`、`java >=25`、`environment=client`）；`com/packhub/**`；`assets/packhub/icon.png`；中英 `lang` |
+| `packhub-neoforge-1.0.2.jar` | 182,643 字节 | 88 个条目；`META-INF/neoforge.mods.toml`（`modId=packhub`、入口 `com.packhub.neoforge.PackHubNeoForge`、`neoforge >=26.3`、`minecraft [26.3,26.4)`）；`com/packhub/**`；图标；中英 `lang` |
+| `packhub-fabric-1.0.2-sources.jar` | 89,900 字节 | 源码 jar |
+| `packhub-neoforge-1.0.2-sources.jar` | 90,000 字节 | 源码 jar |
 
 除此之外，该次运行里每个步骤都是 success：API 签名探测、**离线逻辑测试 16/16**、
 **Mock 服务器测试 13/13**、**构建 Fabric jar**、构建 NeoForge jar、真实 Modrinth 冒烟测试。

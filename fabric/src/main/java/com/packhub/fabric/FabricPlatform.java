@@ -40,6 +40,11 @@ public final class FabricPlatform implements Platform {
     }
 
     @Override
+    public com.packhub.platform.NetworkBridge network() {
+        return FabricNetwork.get();
+    }
+
+    @Override
     public Set<String> loadedModIds() {
         Set<String> ids = new LinkedHashSet<>();
         for (ModContainer container : FabricLoader.getInstance().getAllMods()) {

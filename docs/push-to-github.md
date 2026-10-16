@@ -43,15 +43,15 @@ java tools\github-push\GitHubSetup.java whoami
 java tools\github-push\GitHubSetup.java repo packhub
 
 # 把整个工程（137 个文件，约 0.68 MB）作为一个提交传上去
-java tools\github-push\GitHubSetup.java upload 你的用户名/packhub --message "PackHub 1.0.0 初始提交"
+java tools\github-push\GitHubSetup.java upload 你的用户名/packhub --message "PackHub 1.0.2 初始提交"
 
 # 想先干跑看看会传哪些文件：
 java tools\github-push\GitHubSetup.java upload 你的用户名/packhub --dry-run
 ```
 
 上传完成后打开 `https://github.com/你的用户名/packhub/actions`，`Build PackHub` 工作流会自动开始跑：
-先离线逻辑测试与 mock 测试，再 `gradle build`，最后把 `packhub-fabric-1.0.0.jar` 与
-`packhub-neoforge-1.0.0.jar` 作为 artifact 上传——**这才是你拿到 jar 的地方**。
+先离线逻辑测试与 mock 测试，再 `gradle build`，最后把 `packhub-fabric-1.0.2.jar` 与
+`packhub-neoforge-1.0.2.jar` 作为 artifact 上传——**这才是你拿到 jar 的地方**。
 
 ---
 

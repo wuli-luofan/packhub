@@ -246,6 +246,14 @@ public class DownloadManager {
                         outcome.hotReloaded(), outcome.needsRestart(), message);
                 registry.record(result);
                 notifyInstalled(result);
+                // 房主装了新模组：顺手同步给其他玩家（非房主/通道不可用时只是记日志）
+                if (type == ContentType.MOD && config.enableHostModSync && PackHub.sync() != null) {
+                    try {
+                        PackHub.sync().broadcast();
+                    } catch (Throwable t) {
+                        Log.warn("[PackHub] 广播同步清单失败: %s", t.toString());
+                    }
+                }
                 return result;
             } catch (SourceException e) {
                 if (job.cancelled()) {

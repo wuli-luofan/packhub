@@ -52,7 +52,7 @@ public final class LogicTests {
 
         Path pluginJar = work.resolve("example-plugin.jar");
         writeJar(pluginJar, "packhub-plugin.json",
-                "{\n  \"id\": \"example-plugin\",\n  \"name\": \"Example Hot-Load Plugin\",\n  \"version\": \"1.0.0\",\n  \"main\": \"com.example.ExamplePlugin\",\n  \"apiVersion\": 1\n}\n");
+                "{\n  \"id\": \"example-plugin\",\n  \"name\": \"Example Hot-Load Plugin\",\n  \"version\": \"1.0.2\",\n  \"main\": \"com.example.ExamplePlugin\",\n  \"apiVersion\": 1\n}\n");
 
         Path plainJar = work.resolve("mystery-1.0.jar");
         writeJar(plainJar, "some/package/Thing.class", new byte[]{0, 1, 2, 3});
@@ -214,6 +214,94 @@ public final class LogicTests {
             Files.write(modsDir.resolve("present.jar"), new byte[]{1, 2, 3});
             List<com.packhub.installed.InstallRegistry.Entry> shareable = registry.shareableMods(modsDir);
             return shareable.size() == 1 && shareable.get(0).fileName.equals("present.jar");
+        });
+
+        // ---------------------------------------------------------- 联机同步协议（房主下发 / 玩家自动下载）
+        check("同步清单：编码 / 解码往返一致", () -> {
+            List<com.packhub.sync.SyncEntry> entries = List.of(
+                    new com.packhub.sync.SyncEntry("a.jar", "https://example.invalid/a.jar", "aa".repeat(20), 1234,
+                            "MOD", "Mod A", "1.2.3"),
+                    new com.packhub.sync.SyncEntry("b.zip", "https://example.invalid/b.zip", "bb".repeat(20), 999,
+                            "RESOURCEPACK", "Pack B", "0.9"));
+            com.packhub.sync.SyncManifest manifest = new com.packhub.sync.SyncManifest("房主", entries);
+            com.packhub.sync.SyncManifest decoded =
+                    com.packhub.sync.SyncManifest.decode(manifest.encode());
+            return decoded.hostName.equals("房主")
+                    && decoded.size() == 2
+                    && decoded.entries.get(0).fileName.equals("a.jar")
+                    && decoded.entries.get(0).size == 1234
+                    && decoded.entries.get(1).type.equals("RESOURCEPACK")
+                    && decoded.entries.get(1).versionNumber.equals("0.9");
+        });
+        check("同步消息：清单 / 进度 往返一致", () -> {
+            com.packhub.sync.SyncManifest manifest = new com.packhub.sync.SyncManifest("host",
+                    List.of(new com.packhub.sync.SyncEntry("x.jar", "https://example.invalid/x.jar", "", 5,
+                            "MOD", "X", "1")));
+            com.packhub.sync.SyncMessage restored =
+                    com.packhub.sync.SyncMessage.decode(com.packhub.sync.SyncMessage.manifest(manifest).encode());
+            com.packhub.sync.SyncMessage progress =
+                    com.packhub.sync.SyncMessage.decode(com.packhub.sync.SyncMessage.progress("x.jar", 2, 5).encode());
+            return restored.kind == com.packhub.sync.SyncMessage.Kind.MANIFEST
+                    && restored.manifest != null && restored.manifest.size() == 1
+                    && progress.kind == com.packhub.sync.SyncMessage.Kind.PROGRESS
+                    && progress.index == 2 && progress.total == 5 && progress.text.equals("x.jar");
+        });
+        check("同步下载器：已存在且校验一致的文件会跳过", () -> {
+            Path dir = work.resolve("sync-1");
+            Files.createDirectories(dir);
+            byte[] payload = "hello packhub".getBytes(StandardCharsets.UTF_8);
+            Files.write(dir.resolve("exists.jar"), payload);
+            List<com.packhub.sync.SyncEntry> entries = List.of(
+                    new com.packhub.sync.SyncEntry("exists.jar", "https://example.invalid/exists.jar",
+                            Hashes.sha1(payload), payload.length, "MOD", "Exists", "1"),
+                    new com.packhub.sync.SyncEntry("fresh.jar", "https://example.invalid/fresh.jar", "", 7,
+                            "MOD", "Fresh", "1"));
+            com.packhub.sync.SyncDownloader downloader = new com.packhub.sync.SyncDownloader(dir,
+                    (entry, target, listener, token) -> {
+                        Files.write(target, "1234567".getBytes(StandardCharsets.UTF_8));
+                        return target;
+                    });
+            com.packhub.sync.SyncDownloader.Outcome outcome = downloader.run(
+                    new com.packhub.sync.SyncManifest("host", entries), new com.packhub.http.CancelToken(), null, null);
+            return outcome.total == 2 && outcome.skipped.size() == 1 && outcome.downloaded.size() == 1
+                    && outcome.allOk();
+        });
+        check("同步下载器：单个文件失败不影响其他文件", () -> {
+            Path dir = work.resolve("sync-2");
+            Files.createDirectories(dir);
+            List<com.packhub.sync.SyncEntry> entries = List.of(
+                    new com.packhub.sync.SyncEntry("bad.jar", "https://example.invalid/bad.jar", "", 1, "MOD", "Bad", "1"),
+                    new com.packhub.sync.SyncEntry("good.jar", "https://example.invalid/good.jar", "", 1, "MOD", "Good", "1"));
+            com.packhub.sync.SyncDownloader downloader = new com.packhub.sync.SyncDownloader(dir,
+                    (entry, target, listener, token) -> {
+                        if (entry.fileName.startsWith("bad")) {
+                            throw new com.packhub.source.SourceException("模拟网络错误", 0);
+                        }
+                        Files.write(target, new byte[]{9});
+                        return target;
+                    });
+            com.packhub.sync.SyncDownloader.Outcome outcome = downloader.run(
+                    new com.packhub.sync.SyncManifest("host", entries), new com.packhub.http.CancelToken(), null, null);
+            return outcome.failures.size() == 1 && outcome.downloaded.size() == 1 && !outcome.allOk();
+        });
+        check("同步下载器：取消后立刻停止", () -> {
+            Path dir = work.resolve("sync-3");
+            Files.createDirectories(dir);
+            com.packhub.http.CancelToken token = new com.packhub.http.CancelToken();
+            List<com.packhub.sync.SyncEntry> entries = new ArrayList<>();
+            for (int i = 0; i < 4; i++) {
+                entries.add(new com.packhub.sync.SyncEntry("f" + i + ".jar", "https://example.invalid/f" + i, "",
+                        1, "MOD", "F" + i, "1"));
+            }
+            com.packhub.sync.SyncDownloader downloader = new com.packhub.sync.SyncDownloader(dir,
+                    (entry, target, listener, t) -> {
+                        Files.write(target, new byte[]{1});
+                        token.cancel("测试取消");   // 第一个文件之后就取消
+                        return target;
+                    });
+            com.packhub.sync.SyncDownloader.Outcome outcome = downloader.run(
+                    new com.packhub.sync.SyncManifest("host", entries), token, null, null);
+            return outcome.cancelled && outcome.downloaded.size() <= 1 && outcome.completed() < 4;
         });
 
         System.out.println();

@@ -44,6 +44,11 @@ public final class NeoForgePlatform implements Platform {
     }
 
     @Override
+    public com.packhub.platform.NetworkBridge network() {
+        return NeoForgeNetwork.get();
+    }
+
+    @Override
     public Set<String> loadedModIds() {
         Set<String> ids = new LinkedHashSet<>();
         try {

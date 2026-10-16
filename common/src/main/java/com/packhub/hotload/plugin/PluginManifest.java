@@ -4,7 +4,7 @@ package com.packhub.hotload.plugin;
 public final class PluginManifest {
     public String id = "";
     public String name = "";
-    public String version = "1.0.0";
+    public String version = "1.0.2";
     public String main = "";
     public int apiVersion = 1;
     public String description = "";

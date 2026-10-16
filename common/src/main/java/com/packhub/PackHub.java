@@ -10,6 +10,7 @@ import com.packhub.modrinth.ModrinthClient;
 import com.packhub.modrinth.ModrinthSettings;
 import com.packhub.platform.Platform;
 import com.packhub.platform.Platforms;
+import com.packhub.sync.SyncManager;
 import com.packhub.ui.HubScreen;
 import com.packhub.ui.InstallProgressScreen;
 import com.packhub.ui.Toasts;
@@ -25,7 +26,7 @@ import org.slf4j.LoggerFactory;
 public final class PackHub {
     public static final String MOD_ID = "packhub";
     public static final String MOD_NAME = "PackHub";
-    public static final String VERSION = "1.0.0";
+    public static final String VERSION = "1.0.2";
     /** 目标 Minecraft 版本。 */
     public static final String MINECRAFT_VERSION = "26.3";
 
@@ -38,6 +39,7 @@ public final class PackHub {
     private static CurseForgeClient curseForge;
     private static DownloadManager downloads;
     private static HotLoadManager hotLoad;
+    private static SyncManager sync;
 
     private PackHub() {
     }
@@ -58,6 +60,8 @@ public final class PackHub {
         hotLoad = new HotLoadManager(platformImpl, config);
         hotLoad.start();
         installNotification();
+        sync = new SyncManager();
+        sync.start();
 
         LOGGER.info("[PackHub] ready on {} {} (Minecraft {}, hot-load={})",
                 platformImpl.loaderName(), platformImpl.loaderVersion(), MINECRAFT_VERSION,
@@ -153,6 +157,11 @@ public final class PackHub {
         return downloads;
     }
 
+    /** 联机模组同步（房主下发 / 玩家自动下载）。 */
+    public static SyncManager sync() {
+        return sync;
+    }
+
     public static HotLoadManager hotLoad() {
         return hotLoad;
     }
@@ -223,12 +232,22 @@ public final class PackHub {
         }
         hotLoad.tick();
         downloads.tick();
+        if (sync != null) {
+            sync.tick();
+        }
     }
 
     /** 游戏退出时释放线程与插件类加载器。 */
     public static void shutdown() {
         if (!initialized) {
             return;
+        }
+        try {
+            if (sync != null) {
+                sync.stop();
+            }
+        } catch (Throwable t) {
+            LOGGER.warn("[PackHub] 关闭同步器失败", t);
         }
         try {
             hotLoad.stop();

@@ -17,7 +17,7 @@ public final class CurseForgeSettings {
     public int downloadRetries = 3;
     /** Minecraft 在 CurseForge 里的 gameId。 */
     public int minecraftGameId = 432;
-    public String userAgent = "packhub/1.0.0 (Minecraft mod)";
+    public String userAgent = "packhub/1.0.2 (Minecraft mod)";
 
     public boolean hasApiKey() {
         return apiKey != null && !apiKey.isBlank();

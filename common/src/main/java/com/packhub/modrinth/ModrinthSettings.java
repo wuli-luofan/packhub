@@ -11,7 +11,7 @@ public final class ModrinthSettings {
     public int connectTimeoutSeconds = 15;
     public int readTimeoutSeconds = 60;
     public int downloadRetries = 3;
-    public String userAgent = "packhub/1.0.0 (Minecraft mod; +https://modrinth.com)";
+    public String userAgent = "packhub/1.0.2 (Minecraft mod; +https://modrinth.com)";
 
     public ModrinthSettings() {
     }

@@ -39,4 +39,12 @@ public interface Platform {
     default Path loaderDataDir() {
         return gameDir();
     }
+
+    /**
+     * PackHub 自己的联机通道（房主下发模组用）。
+     * 默认返回不可用实现，加载器模块按需覆盖。
+     */
+    default NetworkBridge network() {
+        return NetworkBridge.NOOP;
+    }
 }
