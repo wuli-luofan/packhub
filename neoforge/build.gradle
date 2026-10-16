@@ -38,3 +38,13 @@ processResources {
         expand "version": project.version
     }
 }
+
+// 排查用：打印编译期 classpath（CI 的 API 探测步骤会用它 javap 出真实签名；
+// 联机同步的发包方法名就是靠这一步确认的）
+tasks.register('printClasspath') {
+    group = 'help'
+    description = '打印 NeoForge 编译期 classpath'
+    doLast {
+        configurations.compileClasspath.files.each { println "CP: " + it }
+    }
+}
