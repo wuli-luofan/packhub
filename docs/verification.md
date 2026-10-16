@@ -20,17 +20,27 @@
 
 本机网络拿不到 Minecraft 工具链（第 5 节），所以构建放在 GitHub Actions 里做。
 
-**运行记录**：<https://github.com/wuli-luofan/packhub/actions/runs/38840490248> —— `conclusion: success`
+**运行记录**：
+- v1.0.0：<https://github.com/wuli-luofan/packhub/actions/runs/38840490248> —— `conclusion: success`
+- v1.0.2（联机同步 / 中文搜索 / 自适应 UI）：<https://github.com/wuli-luofan/packhub/actions/runs/38845457189>、<https://github.com/wuli-luofan/packhub/actions/runs/38850595934> —— 均 `conclusion: success`
 
 | 产物 | 大小 | 校验内容 |
 | --- | --- | --- |
-| `packhub-fabric-1.0.2.jar` | 184,403 字节 | 88 个条目；`fabric.mod.json`（`id=packhub`、`version=1.0.2`、入口 `com.packhub.fabric.PackHubFabric`、`minecraft ~26.3`、`java >=25`、`environment=client`）；`com/packhub/**`；`assets/packhub/icon.png`；中英 `lang` |
-| `packhub-neoforge-1.0.2.jar` | 182,643 字节 | 88 个条目；`META-INF/neoforge.mods.toml`（`modId=packhub`、入口 `com.packhub.neoforge.PackHubNeoForge`、`neoforge >=26.3`、`minecraft [26.3,26.4)`）；`com/packhub/**`；图标；中英 `lang` |
-| `packhub-fabric-1.0.2-sources.jar` | 89,900 字节 | 源码 jar |
-| `packhub-neoforge-1.0.2-sources.jar` | 90,000 字节 | 源码 jar |
+| `packhub-fabric-1.0.2.jar` | 256,450 字节 | **139 个条目**；`fabric.mod.json`（`id=packhub`、`version=1.0.2`、入口 `com.packhub.fabric.PackHubFabric`、`minecraft ~26.3`、`java >=25`、`fabric-api *`、`environment=client`）；`com/packhub/**`（含 `sync/`、`search/`、`ui/ButtonBar`）；`assets/packhub/icon.png`；中英 `lang` |
+| `packhub-neoforge-1.0.2.jar` | 254,666 字节 | **139 个条目**；`META-INF/neoforge.mods.toml`（`modId=packhub`、入口 `com.packhub.neoforge.PackHubNeoForge`、`neoforge [26.3,)`、`minecraft [26.3,26.4)`）；`com/packhub/**`（含 `NeoForgeNetwork`）；图标；中英 `lang` |
+| `packhub-fabric-1.0.2-sources.jar` | 126,333 字节 | 源码 jar |
+| `packhub-neoforge-1.0.2-sources.jar` | 126,465 字节 | 源码 jar |
 
-除此之外，该次运行里每个步骤都是 success：API 签名探测、**离线逻辑测试 16/16**、
-**Mock 服务器测试 13/13**、**构建 Fabric jar**、构建 NeoForge jar、真实 Modrinth 冒烟测试。
+> v1.0.0 的对应数字（留档对比）：fabric 184,403 / neoforge 182,643 字节，各 88 个条目。
+> 1.0.2 多出来的体积与条目就是联机同步（`com/packhub/sync/**`）、中文搜索（`com/packhub/search/**`）
+> 与新界面组件（`ui/ButtonBar`、`ui/InstallProgressScreen`、`ui/SyncScreen`）。
+
+除此之外，每次运行里每个步骤都是 success：API 签名探测、离线逻辑测试、Mock 服务器测试、
+构建 Fabric jar、构建 NeoForge jar（`:neoforge:jar` 与 `:neoforge:build` 均 BUILD SUCCESSFUL）、
+真实 Modrinth 冒烟测试。
+
+> 桌面交付的副本与 CI 产物 **SHA-256 完全一致**：
+> fabric `9894365AE23D4A66…`、neoforge `FC5DBB035A0DB73E…`（1.0.2）。
 
 > 顺带一提：元数据里的中文描述已按 UTF-8 校验通过（`fabric.mod.json` 内
 > `"description": "游戏内下载资源包 / 材质包 / 光影包 / 模组，并支持热加载…"`），

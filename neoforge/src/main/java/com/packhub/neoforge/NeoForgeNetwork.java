@@ -108,41 +108,20 @@ public final class NeoForgeNetwork implements NetworkBridge {
         return server() != null;
     }
 
-    // ------------------------------------------------------------ 发包（NeoForge 版本间改过名字，用候选取名）
-
-    /** 客户端 -> 服务端：候选 类名#方法名。 */
-    private static final String[][] SEND_TO_SERVER = {
-            {"net.neoforged.neoforge.network.PacketDistributor", "sendToServer"},
-            {"net.neoforged.neoforge.client.network.ClientPacketDistributor", "sendToServer"},
-    };
-    private static final String[][] SEND_TO_ALL = {
-            {"net.neoforged.neoforge.network.PacketDistributor", "sendToAllPlayers"},
-            {"net.neoforged.neoforge.server.network.ServerPacketDistributor", "sendToAllPlayers"},
-    };
-    private static final String[][] SEND_TO_PLAYER = {
-            {"net.neoforged.neoforge.network.PacketDistributor", "sendToPlayer"},
-            {"net.neoforged.neoforge.server.network.ServerPacketDistributor", "sendToPlayer"},
-    };
-
-    private static boolean invoke(String[][] candidates, Object[] args, Class<?>[] parameterTypes) {
-        for (String[] candidate : candidates) {
-            try {
-                Class<?> owner = Class.forName(candidate[0]);
-                Method method = owner.getMethod(candidate[1], parameterTypes);
-                method.invoke(null, args);
-                return true;
-            } catch (Throwable ignored) {
-                // 试下一个候选
-            }
-        }
-        return false;
-    }
+    // ------------------------------------------------------------ 发包
+    //
+    // 签名由 CI 的 javap 探测确认（NeoForge 26.3 的 PacketDistributor）：
+    //   sendToServer(CustomPacketPayload, CustomPacketPayload...)
+    //   sendToAllPlayers(CustomPacketPayload, CustomPacketPayload...)
+    //   sendToPlayer(ServerPlayer, CustomPacketPayload, CustomPacketPayload...)
+    // 都是可变参数形式。
 
     @Override
     public void sendToServer(byte[] payload) {
-        Payload packet = new Payload(encode(payload));
-        if (!invoke(SEND_TO_SERVER, new Object[]{packet}, new Class<?>[]{CustomPacketPayload.class})) {
-            com.packhub.util.Log.warn("[PackHub] NeoForge 找不到发往服务端的入口，联机同步不可用");
+        try {
+            PacketDistributor.sendToServer(new Payload(encode(payload)));
+        } catch (Throwable t) {
+            com.packhub.util.Log.warn("[PackHub] 发送同步消息失败: %s", t.toString());
         }
     }
 
@@ -153,7 +132,7 @@ public final class NeoForgeNetwork implements NetworkBridge {
             return;
         }
         Payload packet = new Payload(encode(payload));
-        server.execute(() -> invoke(SEND_TO_ALL, new Object[]{packet}, new Class<?>[]{CustomPacketPayload.class}));
+        server.execute(() -> PacketDistributor.sendToAllPlayers(packet));
     }
 
     @Override
@@ -166,8 +145,7 @@ public final class NeoForgeNetwork implements NetworkBridge {
         server.execute(() -> {
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                 if (player.getUUID().equals(playerId)) {
-                    invoke(SEND_TO_PLAYER, new Object[]{player, packet},
-                            new Class<?>[]{ServerPlayer.class, CustomPacketPayload.class});
+                    PacketDistributor.sendToPlayer(player, packet);
                     return;
                 }
             }

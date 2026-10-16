@@ -257,16 +257,20 @@ PackHub 定义了一种“不会触碰 Mixin、因此可以真正热加载”的
 
 本机因为网络拿不到 Minecraft 工具链（见下），所以改用 GitHub Actions 构建：
 
-**运行记录**：<https://github.com/wuli-luofan/packhub/actions/runs/38840490248> —— `conclusion: success`，
-产物 `packhub-jars`（499 KB）内容：
+**运行记录**（每次 `conclusion: success`）：
+- v1.0.0：<https://github.com/wuli-luofan/packhub/actions/runs/38840490248>
+- v1.0.2（联机同步 / 中文搜索 / 自适应 UI）：<https://github.com/wuli-luofan/packhub/actions/runs/38845457189>、<https://github.com/wuli-luofan/packhub/actions/runs/38850595934>
+
+产物 `packhub-jars`（701 KB）内容：
 
 | 文件 | 大小 | 校验过的内容 |
 | --- | --- | --- |
-| `packhub-fabric-1.0.2.jar` | 184,403 字节 | 88 个条目；含 `fabric.mod.json`（入口 `com.packhub.fabric.PackHubFabric`，`minecraft ~26.3`，`java >=25`）、`com/packhub/**`、图标、中英语言文件 |
-| `packhub-neoforge-1.0.2.jar` | 182,643 字节 | 88 个条目；含 `META-INF/neoforge.mods.toml`（入口 `com.packhub.neoforge.PackHubNeoForge`，`neoforge >=26.3`）、`com/packhub/**`、图标、中英语言文件 |
-| 两个 `-sources.jar` | 约 90 KB | 源码 jar |
+| `packhub-fabric-1.0.2.jar` | 256,450 字节 | 139 个条目；含 `fabric.mod.json`（`version=1.0.2`，入口 `com.packhub.fabric.PackHubFabric`，`minecraft ~26.3`，`java >=25`，`fabric-api *`）、`com/packhub/**`（含 `sync/`、`search/`、`ui/ButtonBar`）、图标、中英语言文件 |
+| `packhub-neoforge-1.0.2.jar` | 254,666 字节 | 139 个条目；含 `META-INF/neoforge.mods.toml`（入口 `com.packhub.neoforge.PackHubNeoForge`，`neoforge [26.3,)`，`minecraft [26.3,26.4)`）、`com/packhub/**`（含 `NeoForgeNetwork`）、图标、中英语言文件 |
+| `packhub-fabric-1.0.2-sources.jar` | 126,333 字节 | 源码 jar |
+| `packhub-neoforge-1.0.2-sources.jar` | 126,465 字节 | 源码 jar |
 
-同时 CI 里 **离线逻辑测试 16/16、Mock 服务器测试 13/13 也都是 passed**（每个 Gradle 步骤的结论都是 success）。
+同时 CI 里 **离线逻辑测试 30/30、Mock 服务器测试 13/13**、真实 Modrinth 冒烟测试也都是 success。
 
 产物下载：仓库 → Actions → 对应运行 → 页面底部 **Artifacts → packhub-jars**。
 
