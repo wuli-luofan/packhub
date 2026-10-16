@@ -62,10 +62,35 @@ public final class NeoForgeNetwork implements NetworkBridge {
 
     private static void onRegisterPayloads(RegisterPayloadHandlersEvent event) {
         PayloadRegistrar registrar = event.registrar("1");
-        registrar.playToServer(Payload.TYPE, Payload.CODEC, (payload, context) ->
-                context.enqueueWork(() -> dispatchFromClient(payload, context)));
-        registrar.playToClient(Payload.TYPE, Payload.CODEC, (payload, context) ->
-                context.enqueueWork(() -> dispatchFromServer(payload)));
+        // 必须用 bidirectional 只注册一次：NeoForge 的注册表按频道名去重，
+        // 先 playToServer 再 playToClient 注册同一个 packhub:sync 会抛
+        // UnsupportedOperationException: Cannot register payload packhub:sync as it is already registered
+        // （这就是进游戏时 mod 加载失败的原因）。
+        // 处理器里自己判断方向：服务端收到的是 C2S（context.player() 是 ServerPlayer），
+        // 客户端收到的是 S2C；这样也不用关心重载参数顺序。
+        try {
+            registrar.playBidirectional(Payload.TYPE, Payload.CODEC, (payload, context) ->
+                    context.enqueueWork(() -> handle(payload, context)));
+        } catch (Throwable t) {
+            // 注册失败只损失联机同步，绝不让整个 mod 加载失败
+            com.packhub.util.Log.warn("[PackHub] 注册 %s 频道失败，联机同步不可用: %s",
+                    Payload.TYPE.id(), t.toString());
+        }
+    }
+
+    /** 按当前所处的一端分派：整合服务器与专用服务器都拿到 ServerPlayer，客户端拿到本地玩家。 */
+    private static void handle(Payload payload, IPayloadContext context) {
+        boolean serverSide = false;
+        try {
+            serverSide = context.player() instanceof ServerPlayer;
+        } catch (Throwable ignored) {
+            // 取不到就按客户端处理
+        }
+        if (serverSide) {
+            dispatchFromClient(payload, context);
+        } else {
+            dispatchFromServer(payload);
+        }
     }
 
     private static void dispatchFromClient(Payload payload, IPayloadContext context) {
