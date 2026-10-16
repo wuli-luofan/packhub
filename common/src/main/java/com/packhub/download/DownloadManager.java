@@ -14,6 +14,10 @@ import com.packhub.modrinth.model.ProjectVersion;
 import com.packhub.modrinth.model.VersionDependency;
 import com.packhub.modrinth.model.VersionFile;
 import com.packhub.platform.Platform;
+import com.packhub.modrinth.SearchQuery;
+import com.packhub.modrinth.SearchResult;
+import com.packhub.search.SearchMerger;
+import com.packhub.search.ChineseTerms;
 import com.packhub.source.ContentSource;
 import com.packhub.source.SourceException;
 import com.packhub.util.Hashes;
@@ -149,6 +153,70 @@ public class DownloadManager {
     }
 
     // ------------------------------------------------------------ 查询
+
+    /**
+     * 统一搜索入口：中文关键词会自动翻译成英文（Modrinth/CurseForge 的索引基本是英文），
+     * 多条查询的结果去重合并后当作一页返回。
+     */
+    public SearchResult search(SearchQuery query, ContentSource source, boolean filterLoader)
+            throws SourceException {
+        List<String> plan = planQueries(query.query);
+        if (plan.size() <= 1) {
+            return source == ContentSource.CURSEFORGE
+                    ? curseForge.search(query, filterLoader)
+                    : modrinth.search(query, filterLoader);
+        }
+        List<SearchResult> pages = new ArrayList<>();
+        SourceException lastError = null;
+        for (String variant : plan) {
+            if (variant == null || variant.isBlank()) {
+                continue;
+            }
+            SearchQuery variantQuery = query.copy();
+            variantQuery.query = variant;
+            try {
+                pages.add(source == ContentSource.CURSEFORGE
+                        ? curseForge.search(variantQuery, filterLoader)
+                        : modrinth.search(variantQuery, filterLoader));
+            } catch (SourceException e) {
+                lastError = e;
+                Log.warn("[PackHub] 查询「%s」失败: %s", variant, e.getMessage());
+            }
+        }
+        if (pages.isEmpty()) {
+            throw lastError != null ? lastError : new SourceException("搜索失败", 0);
+        }
+        SearchResult merged = SearchMerger.merge(pages, query.limit > 0 ? query.limit : 20);
+        merged.offset = query.offset;
+        merged.limit = query.limit > 0 ? query.limit : 20;
+        return merged;
+    }
+
+    /**
+     * 生成查询计划：输入是中文且开关打开时，会扩展成「翻译后的英文」等若干条查询。
+     * <p>例：「光影优化」→ ["shader optimization", "shader"]。</p>
+     */
+    public List<String> planQueries(String rawQuery) {
+        String query = rawQuery == null ? "" : rawQuery.trim();
+        if (!config.enableChineseSearch || !ChineseTerms.hasChinese(query)) {
+            return List.of(query);
+        }
+        List<String> expanded = ChineseTerms.expand(query);
+        if (expanded.isEmpty()) {
+            return List.of(query);
+        }
+        int max = Math.max(1, config.chineseSearchMaxQueries);
+        return expanded.size() > max ? new ArrayList<>(expanded.subList(0, max)) : expanded;
+    }
+
+    /** 中文搜索时给界面用的一句说明（没有翻译时返回空串）。 */
+    public String chineseSearchHint(String rawQuery) {
+        List<String> plan = planQueries(rawQuery);
+        if (plan.size() <= 1 || !ChineseTerms.hasChinese(rawQuery)) {
+            return "";
+        }
+        return "中文搜索：" + rawQuery.trim() + " → " + plan.get(0);
+    }
 
     /** 异步拉取某项目的可用版本（自动按来源分派）。 */
     public CompletableFuture<List<ProjectVersion>> fetchVersions(ProjectSummary project, ContentType type) {

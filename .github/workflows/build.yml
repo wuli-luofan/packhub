@@ -81,14 +81,23 @@ jobs:
           echo "########## 网络 API（NeoForge）"
           gradle :neoforge:printClasspath -q --no-daemon -Ppackhub.repos=official > cpn.txt 2>&1 || true
           grep '^CP: ' cpn.txt | sed 's/^CP: //' > jarsn.txt || true
-          NFJAR=$(while read -r jar; do if [ -f "$jar" ] && unzip -l "$jar" 2>/dev/null | grep -q 'net/neoforged/neoforge/network/PacketDistributor.class'; then echo "$jar"; break; fi; done < jarsn.txt)
-          echo "=== NeoForge jar: $NFJAR ==="
+          echo "neoforge classpath 条目数: $(wc -l < jarsn.txt)"
           for cls in \
             net.neoforged.neoforge.network.registration.PayloadRegistrar \
             net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent \
-            net.neoforged.neoforge.network.PacketDistributor ; do
+            net.neoforged.neoforge.network.PacketDistributor \
+            net.neoforged.neoforge.client.network.ClientPacketDistributor \
+            net.neoforged.neoforge.server.network.ServerPacketDistributor ; do
             echo "########## $cls"
-            if [ -n "$NFJAR" ]; then javap -classpath "$NFJAR" "$cls" 2>&1 | head -60 || true; fi
+            found=0
+            while read -r jar; do
+              if [ -f "$jar" ] && unzip -l "$jar" 2>/dev/null | grep -q "$(echo "$cls" | tr '.' '/').class"; then
+                javap -classpath "$jar" "$cls" 2>&1 | head -60 || true
+                found=1
+                break
+              fi
+            done < jarsn.txt
+            if [ "$found" = "0" ]; then echo "(未找到该类)"; fi
           done
 
       - name: 离线逻辑测试（jar 元数据识别 / 待重启队列 / 搜索分面）

@@ -74,6 +74,10 @@ public final class PackHubConfig {
 
     /** 显示 Toast 提示。 */
     public boolean showToasts = true;
+    /** 允许中文搜索：把中文关键词翻译成英文再搜（Modrinth/CurseForge 的索引基本是英文）。 */
+    public boolean enableChineseSearch = true;
+    /** 中文搜索时最多额外发几条查询（1 = 只用翻译结果，2 = 翻译 + 单词兜底）。 */
+    public int chineseSearchMaxQueries = 2;
     /** 开始安装时自动打开进度界面（可以在里面取消安装）。 */
     public boolean autoOpenProgressScreen = true;
     /** 安装完成后弹出「装了什么」的通知。 */

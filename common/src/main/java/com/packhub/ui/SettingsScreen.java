@@ -171,6 +171,12 @@ public class SettingsScreen extends Screen {
                 }));
         values.add(new Setting("启用 CurseForge", "关闭后搜索页会拒绝使用 CurseForge 来源",
                 () -> config.enableCurseForge, value -> config.enableCurseForge = value));
+        values.add(new Setting("中文搜索", "把中文关键词翻译成英文再搜（光影→shader、小地图→minimap…），"
+                + "翻译结果与原词一起搜并去重合并",
+                () -> config.enableChineseSearch, value -> config.enableChineseSearch = value));
+        values.add(new Setting("中文搜索查询条数", "点一下在 1 / 2 / 3 之间切换：越多越全，但请求也越多",
+                () -> config.chineseSearchMaxQueries >= 2,
+                value -> config.chineseSearchMaxQueries = value ? 3 : 1));
         values.add(new Setting("自动安装必选前置", "下载模组时自动把 required 依赖一起装上（两个源都生效）",
                 () -> config.autoResolveDependencies, value -> config.autoResolveDependencies = value));
         values.add(new Setting("安装后自动启用资源包", "下载完资源包后自动勾选并生效",

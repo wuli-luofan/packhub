@@ -78,28 +78,13 @@ public final class FabricNetwork implements NetworkBridge {
 
     /**
      * 注册 play 阶段的数据包类型。
-     * <p>Fabric API 把一个方向注册表的方法改过名（playC2S/playS2C → serverboundPlay/clientboundPlay），
-     * 这里按方法名依次尝试，编译期只依赖两个方向各有一个注册入口。</p>
+     * <p>方法名由 CI 的 API 探测确认：26.3 的 Fabric API 用
+     * {@code serverboundPlay()}（C2S）与 {@code clientboundPlay()}（S2C），
+     * 旧名字 {@code playC2S()/playS2C()} 已不存在。</p>
      */
     private static void registerPayloadTypes() {
-        registerType("serverboundPlay", "playC2S");
-        registerType("clientboundPlay", "playS2C");
-    }
-
-    private static void registerType(String... candidateMethods) {
-        for (String method : candidateMethods) {
-            try {
-                Method target = PayloadTypeRegistry.class.getMethod(method);
-                Object registry = target.invoke(null);
-                Method register = registry.getClass().getMethod("register",
-                        CustomPacketPayload.Type.class, StreamCodec.class);
-                register.invoke(registry, Payload.TYPE, Payload.CODEC);
-                return;
-            } catch (Throwable ignored) {
-                // 试下一个方法名
-            }
-        }
-        com.packhub.util.Log.warn("[PackHub] 找不到 Fabric 数据包注册入口，联机同步不可用");
+        PayloadTypeRegistry.serverboundPlay().register(Payload.TYPE, Payload.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(Payload.TYPE, Payload.CODEC);
     }
 
     private static void dispatchFromClient(Payload payload, ServerPlayer sender) {

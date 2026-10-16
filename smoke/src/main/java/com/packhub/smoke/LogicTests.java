@@ -285,6 +285,49 @@ public final class LogicTests {
                     new com.packhub.sync.SyncManifest("host", entries), new com.packhub.http.CancelToken(), null, null);
             return outcome.failures.size() == 1 && outcome.downloaded.size() == 1 && !outcome.allOk();
         });
+        // ---------------------------------------------------------- 中文搜索
+        check("中文搜索：识别中文 / 英文输入", () ->
+                com.packhub.search.ChineseTerms.hasChinese("光影")
+                        && com.packhub.search.ChineseTerms.hasChinese("小地图优化")
+                        && !com.packhub.search.ChineseTerms.hasChinese("sodium")
+                        && !com.packhub.search.ChineseTerms.hasChinese(""));
+        check("中文搜索：单词语义翻译", () ->
+                com.packhub.search.ChineseTerms.translate("光影").equals("shader")
+                        && com.packhub.search.ChineseTerms.translate("小地图").equals("minimap")
+                        && com.packhub.search.ChineseTerms.translate("优化").equals("optimization")
+                        && com.packhub.search.ChineseTerms.translate("整合包").equals("modpack")
+                        && com.packhub.search.ChineseTerms.translate("资源包").equals("resource pack"));
+        check("中文搜索：光影优化 -> shader optimization 优先，原词兜底", () -> {
+            java.util.List<String> plan = com.packhub.search.ChineseTerms.expand("光影优化");
+            return plan.size() >= 2
+                    && plan.get(0).equals("shader optimization")
+                    && plan.contains("shader")
+                    && plan.contains("光影优化");
+        });
+        check("中文搜索：长词优先匹配（材质包 -> resource pack）", () ->
+                com.packhub.search.ChineseTerms.translate("材质包").equals("resource pack"));
+        check("中文搜索：中英混合输入", () -> {
+            java.util.List<String> plan = com.packhub.search.ChineseTerms.expand("sodium 优化");
+            return !plan.isEmpty() && plan.get(0).contains("sodium") && plan.get(0).contains("optimization");
+        });
+        check("中文搜索：多条结果合并去重（主查询优先，重复项目只留一次）", () -> {
+            com.packhub.modrinth.SearchResult first = resultWith("a", "b", "c");
+            com.packhub.modrinth.SearchResult second = resultWith("b", "d");
+            com.packhub.modrinth.SearchResult merged =
+                    com.packhub.search.SearchMerger.merge(java.util.List.of(first, second), 10);
+            return merged.hits.size() == 4
+                    && merged.hits.get(0).projectId.equals("a")
+                    && merged.hits.get(1).projectId.equals("b")
+                    && merged.hits.get(2).projectId.equals("c")
+                    && merged.hits.get(3).projectId.equals("d");
+        });
+        check("中文搜索：合并时按 limit 截断", () -> {
+            com.packhub.modrinth.SearchResult first = resultWith("a", "b", "c", "d");
+            com.packhub.modrinth.SearchResult second = resultWith("e", "f");
+            com.packhub.modrinth.SearchResult merged =
+                    com.packhub.search.SearchMerger.merge(java.util.List.of(first, second), 3);
+            return merged.hits.size() == 3;
+        });
         check("同步下载器：取消后立刻停止", () -> {
             Path dir = work.resolve("sync-3");
             Files.createDirectories(dir);
@@ -348,6 +391,22 @@ public final class LogicTests {
             zip.write(content);
             zip.closeEntry();
         }
+    }
+
+    /** 造一个搜索结果页，用来测试中文搜索的多查询合并。 */
+    private static com.packhub.modrinth.SearchResult resultWith(String... projectIds) {
+        com.packhub.modrinth.SearchResult result = new com.packhub.modrinth.SearchResult();
+        for (String id : projectIds) {
+            com.packhub.modrinth.model.ProjectSummary project = new com.packhub.modrinth.model.ProjectSummary();
+            project.projectId = id;
+            project.slug = id;
+            project.title = "Project " + id;
+            project.source = com.packhub.source.ContentSource.MODRINTH;
+            result.hits.add(project);
+        }
+        result.totalHits = projectIds.length;
+        result.limit = 20;
+        return result;
     }
 
     private interface Check {

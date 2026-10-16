@@ -22,6 +22,7 @@ sourceSets {
             include 'com/packhub/platform/Platform.java'
             include 'com/packhub/platform/NetworkBridge.java'
             include 'com/packhub/installed/**'
+            include 'com/packhub/search/**'
             include 'com/packhub/sync/SyncEntry.java'
             include 'com/packhub/sync/SyncManifest.java'
             include 'com/packhub/sync/SyncMessage.java'

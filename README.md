@@ -83,6 +83,23 @@ Minecraft 跑在 JVM 上，模组类一经加载就无法卸载，Mixin 也在�
 内容区（列表 / 进度）会自动收缩到按钮栏上方，长文本按宽度截断或折行——
 不会再出现「全屏时按钮跑到屏幕外 / 内容被裁掉 / 互相压叠」。
 
+### 中文搜索
+
+搜索框**可以直接输入中文**。Modrinth / CurseForge 的索引基本是英文的，所以 PackHub 会：
+
+1. 把中文关键词按内置词表（约 200 条 MC 常用术语）翻成英文，例如
+   `光影 → shader`、`小地图 → minimap`、`资源包 / 材质包 → resource pack`、`整合包 → modpack`；
+2. 多词组合保持原语序：`光影优化` → 先搜 `shader optimization`，再补搜 `shader`、`optimization`；
+3. 中英混输也没问题：`sodium 优化` → `sodium optimization`；
+4. 最后还会用**原中文词**再搜一次（有些项目标题/简介就是中文），并把多次结果**去重合并**成一页，
+   主查询的结果排在前面；
+5. 搜索后状态栏会显示这次实际用了什么词，例如
+   `中文搜索：光影优化 → shader optimization · 共 37 个结果`。
+
+相关设置：`enableChineseSearch`（默认开）、`chineseSearchMaxQueries`（默认 2，最多额外发几条查询；
+界面里点一下在 1 / 2 / 3 之间切换）。词表在 `common/src/main/java/com/packhub/search/ChineseTerms.java`，
+想加词直接往 `DICTIONARY` / `TYPE_WORDS` 里加一行即可。
+
 ### CurseForge 怎么用
 
 CurseForge 的 API **必须带用户自己的 API Key**，PackHub 不内置也不分发任何 Key：

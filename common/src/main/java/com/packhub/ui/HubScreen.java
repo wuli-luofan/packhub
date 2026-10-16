@@ -42,6 +42,8 @@ public class HubScreen extends Screen {
     private boolean loading;
     private String status = "输入关键词后回车搜索；留空则列出热门内容";
     private int statusY = 50;
+    /** 本次搜索的原始关键词（中文搜索提示要用）。 */
+    private String currentQuery = "";
 
     public HubScreen(Screen parent) {
         super(Component.literal("PackHub"));
@@ -152,6 +154,7 @@ public class HubScreen extends Screen {
         offset = Math.max(0, newOffset);
         status = "搜索中…";
         String query = searchBox == null ? "" : searchBox.getValue().trim();
+        currentQuery = query;
         ContentType searchType = type;
         ContentSource searchSource = source;
         int pageSize = PackHub.config().searchPageSize;
@@ -170,9 +173,8 @@ public class HubScreen extends Screen {
                         .limit(pageSize)
                         .offset(offset)
                         .index(index);
-                return searchSource == ContentSource.CURSEFORGE
-                        ? PackHub.curseForge().search(searchQuery, filterLoader)
-                        : PackHub.modrinth().search(searchQuery, filterLoader);
+                // 统一入口：中文关键词会先翻译成英文，再合并多条查询的结果
+                return PackHub.downloads().search(searchQuery, searchSource, filterLoader);
             } catch (SourceException e) {
                 throw new RuntimeException(e);
             }
@@ -197,10 +199,12 @@ public class HubScreen extends Screen {
             item.action("版本", 44, this::openVersions);
             item.action("安装", 44, this::quickInstall);
         }
-        status = result.totalHits == 0
+        String hint = PackHub.downloads().chineseSearchHint(currentQuery);
+        String base = result.totalHits == 0
                 ? "没有找到匹配内容（可能是该版本 " + PackHub.MINECRAFT_VERSION + " 暂无对应资源）"
                 : "共 " + result.totalHits + " 个结果，当前第 "
                 + (offset / Math.max(1, PackHub.config().searchPageSize) + 1) + " 页";
+        status = hint.isEmpty() ? base : hint + " · " + base;
         results.selected(null);
     }
 
