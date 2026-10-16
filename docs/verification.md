@@ -27,9 +27,9 @@
 | 产物 | 大小 | 校验内容 |
 | --- | --- | --- |
 | `packhub-fabric-1.0.2.jar` | 256,450 字节 | **139 个条目**；`fabric.mod.json`（`id=packhub`、`version=1.0.2`、入口 `com.packhub.fabric.PackHubFabric`、`minecraft ~26.3`、`java >=25`、`fabric-api *`、`environment=client`）；`com/packhub/**`（含 `sync/`、`search/`、`ui/ButtonBar`）；`assets/packhub/icon.png`；中英 `lang` |
-| `packhub-neoforge-1.0.2.jar` | 255,048 字节 | **139 个条目**；`META-INF/neoforge.mods.toml`（`modId=packhub`、入口 `com.packhub.neoforge.PackHubNeoForge`、`neoforge [26.3,)`、`minecraft [26.3,26.4)`）；`com/packhub/**`（含 `NeoForgeNetwork`）；图标；中英 `lang` |
+| `packhub-neoforge-1.0.2.jar` | 255,157 字节 | **139 个条目**；`META-INF/neoforge.mods.toml`（`modId=packhub`、入口 `com.packhub.neoforge.PackHubNeoForge`、`neoforge [26.3,)`、`minecraft [26.3,26.4)`）；`com/packhub/**`（含 `NeoForgeNetwork`）；图标；中英 `lang` |
 | `packhub-fabric-1.0.2-sources.jar` | 126,333 字节 | 源码 jar |
-| `packhub-neoforge-1.0.2-sources.jar` | 126,821 字节 | 源码 jar |
+| `packhub-neoforge-1.0.2-sources.jar` | 127,313 字节 | 源码 jar |
 
 > v1.0.0 的对应数字（留档对比）：fabric 184,403 / neoforge 182,643 字节，各 88 个条目。
 > 1.0.2 多出来的体积与条目就是联机同步（`com/packhub/sync/**`）、中文搜索（`com/packhub/search/**`）
@@ -40,7 +40,7 @@
 真实 Modrinth 冒烟测试。
 
 > 桌面交付的副本与 CI 产物 **SHA-256 完全一致**：
-> fabric `9894365AE23D4A66…`、neoforge `2C33828E9CC5F9EA…`（1.0.2）。
+> fabric `9894365AE23D4A66…`、neoforge `B0CB793D59075F8B…`（1.0.2）。
 
 > 顺带一提：元数据里的中文描述已按 UTF-8 校验通过（`fabric.mod.json` 内
 > `"description": "游戏内下载资源包 / 材质包 / 光影包 / 模组，并支持热加载…"`），
@@ -80,7 +80,14 @@
 5. 中文词表最初用「遍历字典替换」导致语序被打乱（`optimization shader`），
    改成从左到右最长匹配后恢复原语序；
 6. CI 里 `:neoforge:printClasspath` 任务原本只定义在 fabric 模块，探测步骤因此拿不到 classpath，
-   补上后 `javap` 才真正打印出 NeoForge 网络类签名。
+   补上后 `javap` 才真正打印出 NeoForge 网络类签名；
+7. **真机实测（用户 NeoForge 26.3）**：`playToServer` + `playToClient` 注册同一个 `packhub:sync`
+   会让 mod 加载直接失败——
+   `UnsupportedOperationException: Cannot register payload packhub:sync as it is already registered`。
+   NeoForge 的注册表按频道名去重，必须改用 `playBidirectional` 只注册一次
+   （处理器里用 `context.player() instanceof ServerPlayer` 自行判断端），
+   并把注册包在 try/catch 里：注册失败只记一条警告，绝不阻断 mod 加载。
+   这条是编译期发现不了的，只有真进游戏才会暴露。
 
 离线测试数量变化：逻辑测试 **16 → 23 → 30 项**（新增安装记录 2 项、联机同步 5 项、中文搜索 7 项），
 Mock 服务器测试保持 **13 项**。
