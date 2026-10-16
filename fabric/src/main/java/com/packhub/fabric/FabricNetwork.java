@@ -58,14 +58,48 @@ public final class FabricNetwork implements NetworkBridge {
 
     /** 在客户端初始化时注册数据包类型与收发器（整合服务器同样走这里）。 */
     public static void register() {
-        PayloadTypeRegistry.playC2S().register(Payload.TYPE, Payload.CODEC);
-        PayloadTypeRegistry.playS2C().register(Payload.TYPE, Payload.CODEC);
+        registerPayloadTypes();
 
-        ServerPlayNetworking.registerGlobalReceiver(Payload.TYPE, (payload, context) ->
-                context.player().server.execute(() -> dispatchFromClient(payload, context.player())));
+        ServerPlayNetworking.registerGlobalReceiver(Payload.TYPE, (payload, context) -> {
+            ServerPlayer sender = context.player();
+            MinecraftServer server = server();
+            Runnable work = () -> dispatchFromClient(payload, sender);
+            // 服务端线程外收到时要切回服务端线程（整合服务器与客户端线程不同）
+            if (server != null) {
+                server.execute(work);
+            } else {
+                work.run();
+            }
+        });
 
         ClientPlayNetworking.registerGlobalReceiver(Payload.TYPE, (payload, context) ->
-                context.client().execute(() -> dispatchFromServer(payload)));
+                Minecraft.getInstance().execute(() -> dispatchFromServer(payload)));
+    }
+
+    /**
+     * 注册 play 阶段的数据包类型。
+     * <p>Fabric API 把一个方向注册表的方法改过名（playC2S/playS2C → serverboundPlay/clientboundPlay），
+     * 这里按方法名依次尝试，编译期只依赖两个方向各有一个注册入口。</p>
+     */
+    private static void registerPayloadTypes() {
+        registerType("serverboundPlay", "playC2S");
+        registerType("clientboundPlay", "playS2C");
+    }
+
+    private static void registerType(String... candidateMethods) {
+        for (String method : candidateMethods) {
+            try {
+                Method target = PayloadTypeRegistry.class.getMethod(method);
+                Object registry = target.invoke(null);
+                Method register = registry.getClass().getMethod("register",
+                        CustomPacketPayload.Type.class, StreamCodec.class);
+                register.invoke(registry, Payload.TYPE, Payload.CODEC);
+                return;
+            } catch (Throwable ignored) {
+                // 试下一个方法名
+            }
+        }
+        com.packhub.util.Log.warn("[PackHub] 找不到 Fabric 数据包注册入口，联机同步不可用");
     }
 
     private static void dispatchFromClient(Payload payload, ServerPlayer sender) {

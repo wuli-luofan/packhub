@@ -64,6 +64,32 @@ jobs:
             echo "########## ClientCommands"
             javap -classpath "$CMDJAR" net.fabricmc.fabric.api.client.command.v2.ClientCommands 2>&1 | head -20 || true
           fi
+          # 联机同步用到的网络 API：注册入口与收发器
+          NETJAR=$(grep -i 'networking' jars.txt | head -1)
+          echo "=== 网络 jar: $NETJAR ==="
+          for cls in \
+            net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry \
+            net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking \
+            net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking ; do
+            echo "########## $cls"
+            if [ -n "$NETJAR" ]; then javap -classpath "$NETJAR" "$cls" 2>&1 | head -60 || true; fi
+          done
+          for jar in $(grep -i 'networking' jars.txt); do
+            echo "--- jar 内相关类: $jar"
+            unzip -l "$jar" 2>/dev/null | grep -Ei 'PayloadType|PlayNetworking' | head -12 || true
+          done
+          echo "########## 网络 API（NeoForge）"
+          gradle :neoforge:printClasspath -q --no-daemon -Ppackhub.repos=official > cpn.txt 2>&1 || true
+          grep '^CP: ' cpn.txt | sed 's/^CP: //' > jarsn.txt || true
+          NFJAR=$(while read -r jar; do if [ -f "$jar" ] && unzip -l "$jar" 2>/dev/null | grep -q 'net/neoforged/neoforge/network/PacketDistributor.class'; then echo "$jar"; break; fi; done < jarsn.txt)
+          echo "=== NeoForge jar: $NFJAR ==="
+          for cls in \
+            net.neoforged.neoforge.network.registration.PayloadRegistrar \
+            net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent \
+            net.neoforged.neoforge.network.PacketDistributor ; do
+            echo "########## $cls"
+            if [ -n "$NFJAR" ]; then javap -classpath "$NFJAR" "$cls" 2>&1 | head -60 || true; fi
+          done
 
       - name: 离线逻辑测试（jar 元数据识别 / 待重启队列 / 搜索分面）
         run: gradle :smoke:logic --no-daemon -Ppackhub.repos=official -Ppackhub.neoforge=false
