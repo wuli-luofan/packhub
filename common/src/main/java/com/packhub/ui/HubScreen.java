@@ -10,7 +10,7 @@ import com.packhub.source.ContentSource;
 import com.packhub.source.SourceException;
 import com.packhub.util.Async;
 import com.packhub.util.Log;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
@@ -92,11 +92,11 @@ public class HubScreen extends Screen {
         }).bounds(74, height - 28, 60, 20).build());
 
         addRenderableWidget(Button.builder(Component.literal("已安装"), button ->
-                minecraft.setScreen(new InstalledScreen(this))).bounds(width - 250, height - 28, 60, 20).build());
+                minecraft.gui.setScreen(new InstalledScreen(this))).bounds(width - 250, height - 28, 60, 20).build());
         addRenderableWidget(Button.builder(Component.literal("热加载"), button ->
-                minecraft.setScreen(new HotLoadScreen(this))).bounds(width - 186, height - 28, 60, 20).build());
+                minecraft.gui.setScreen(new HotLoadScreen(this))).bounds(width - 186, height - 28, 60, 20).build());
         addRenderableWidget(Button.builder(Component.literal("设置"), button ->
-                minecraft.setScreen(new SettingsScreen(this))).bounds(width - 122, height - 28, 50, 20).build());
+                minecraft.gui.setScreen(new SettingsScreen(this))).bounds(width - 122, height - 28, 50, 20).build());
         addRenderableWidget(Button.builder(Component.literal("关闭"), button -> onClose())
                 .bounds(width - 68, height - 28, 58, 20).build());
 
@@ -190,7 +190,7 @@ public class HubScreen extends Screen {
     }
 
     private void openVersions(ProjectSummary project) {
-        minecraft.setScreen(new VersionScreen(this, project, type));
+        minecraft.gui.setScreen(new VersionScreen(this, project, type));
     }
 
     private void quickInstall(ProjectSummary project) {
@@ -230,13 +230,13 @@ public class HubScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.render(graphics, mouseX, mouseY, partialTick);
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
         UiKit.header(graphics, Component.literal("PackHub · 资源包 / 光影 / 模组 一键下载与热加载"), width);
-        graphics.drawString(font, "§7" + status, 12, 50, 0xFFFFFF, false);
+        graphics.text(font, "§7" + status, 12, 50, 0xFFFFFFFF, false);
         results.render(graphics, mouseX, mouseY);
         if (loading) {
-            graphics.drawString(font, "§e加载中…", width - 60, 50, 0xFFFFFF, false);
+            graphics.text(font, "§e加载中…", width - 60, 50, 0xFFFFFFFF, false);
         }
         prevButton.active = offset > 0 && !loading;
         nextButton.active = (offset + PackHub.config().searchPageSize) < totalHits && !loading;
@@ -270,6 +270,6 @@ public class HubScreen extends Screen {
 
     @Override
     public void onClose() {
-        minecraft.setScreen(parent);
+        minecraft.gui.setScreen(parent);
     }
 }

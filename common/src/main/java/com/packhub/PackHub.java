@@ -154,7 +154,7 @@ public final class PackHub {
 
     public static void openHub() {
         Minecraft minecraft = Minecraft.getInstance();
-        minecraft.execute(() -> minecraft.setScreen(new HubScreen(null)));
+        minecraft.execute(() -> minecraft.gui.setScreen(new HubScreen(null)));
     }
 
     /** 客户端每 tick 调用（由加载器模块挂接）。 */

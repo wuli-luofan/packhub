@@ -23,8 +23,47 @@ jobs:
         with:
           gradle-version: '9.8.1'
 
-      # 注意：下面每个 Gradle 步骤都带 -Ppackhub.neoforge=false 或单独构建，
-      # 这样 NeoForge 侧出问题时不会拖垮 Fabric 侧与测试。
+      # 诊断用：把 26.3 真实的类签名打印出来（本地拉不到工具链时靠这个对齐 API）。
+      # 失败不影响后面的构建。
+      - name: 探测 26.3 客户端 API 签名
+        continue-on-error: true
+        run: |
+          gradle :fabric:printClasspath -q --no-daemon -Ppackhub.repos=official -Ppackhub.neoforge=false > cp.txt 2>&1 || true
+          grep '^CP: ' cp.txt | sed 's/^CP: //' > jars.txt || true
+          echo "classpath 条目数: $(wc -l < jars.txt)"
+          MC=""
+          while read -r jar; do
+            if [ -f "$jar" ] && unzip -l "$jar" 2>/dev/null | grep -q 'net/minecraft/client/Minecraft.class'; then MC="$jar"; break; fi
+          done < jars.txt
+          echo "=== MC jar: $MC ==="
+          for cls in \
+            net.minecraft.client.gui.screens.Screen \
+            net.minecraft.client.gui.components.events.GuiEventListener \
+            net.minecraft.client.gui.components.events.AbstractContainerEventHandler \
+            net.minecraft.client.gui.GuiGraphicsExtractor \
+            net.minecraft.client.Minecraft \
+            net.minecraft.client.KeyMapping \
+            net.minecraft.client.gui.components.EditBox \
+            net.minecraft.client.gui.components.Button ; do
+            echo "########## $cls"
+            javap -classpath "$MC" "$cls" 2>&1 | head -120 || true
+          done
+          echo "########## Fabric API 相关类"
+          while read -r jar; do
+            if [ -f "$jar" ]; then
+              unzip -l "$jar" 2>/dev/null | grep -Ei 'keymapping|client/command/v2' | head -12
+            fi
+          done < jars.txt
+          KEYJAR=$(grep -i 'key-mapping' jars.txt | head -1)
+          if [ -n "$KEYJAR" ]; then
+            echo "########## KeyMappingHelper"
+            javap -classpath "$KEYJAR" net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper 2>&1 | head -20 || true
+          fi
+          CMDJAR=$(grep -i 'command-api' jars.txt | head -1)
+          if [ -n "$CMDJAR" ]; then
+            echo "########## ClientCommands"
+            javap -classpath "$CMDJAR" net.fabricmc.fabric.api.client.command.v2.ClientCommands 2>&1 | head -20 || true
+          fi
 
       - name: 离线逻辑测试（jar 元数据识别 / 待重启队列 / 搜索分面）
         run: gradle :smoke:logic --no-daemon -Ppackhub.repos=official -Ppackhub.neoforge=false

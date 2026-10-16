@@ -7,7 +7,7 @@ import com.packhub.modrinth.model.ProjectVersion;
 import com.packhub.modrinth.model.VersionFile;
 import com.packhub.source.ContentSource;
 import com.packhub.util.Async;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -153,12 +153,12 @@ public class VersionScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.render(graphics, mouseX, mouseY, partialTick);
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
         UiKit.header(graphics, Component.literal("PackHub · " + project.title + "  [" + project.source.displayName() + "]"), width);
-        graphics.drawString(font, "§7" + status, 12, 38, 0xFFFFFF, false);
+        graphics.text(font, "§7" + status, 12, 38, 0xFFFFFFFF, false);
         if (loading) {
-            graphics.drawString(font, "§e加载中…", 12, 26, 0xFFFFFF, false);
+            graphics.text(font, "§e加载中…", 12, 26, 0xFFFFFFFF, false);
         }
         versions.render(graphics, mouseX, mouseY);
         installButton.active = versions.selected() != null && !loading;
@@ -182,6 +182,6 @@ public class VersionScreen extends Screen {
 
     @Override
     public void onClose() {
-        minecraft.setScreen(parent);
+        minecraft.gui.setScreen(parent);
     }
 }

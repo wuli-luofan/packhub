@@ -5,7 +5,7 @@ import com.packhub.config.PackHubConfig;
 import com.packhub.source.ContentSource;
 import com.packhub.util.Async;
 import com.packhub.util.Log;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
@@ -179,13 +179,13 @@ public class SettingsScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.render(graphics, mouseX, mouseY, partialTick);
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
         UiKit.header(graphics, Component.literal("PackHub · 设置"), width);
-        graphics.drawString(font, "§7Modrinth API: ", 10, 26, 0xFFFFFF, false);
-        graphics.drawString(font, "§7Modrinth CDN 镜像: ", 10, 50, 0xFFFFFF, false);
-        graphics.drawString(font, "§7CurseForge Key: ", 10, 74, 0xFFFFFF, false);
-        graphics.drawString(font, "§7" + status, 10, 104, 0xFFFFFF, false);
+        graphics.text(font, "§7Modrinth API: ", 10, 26, 0xFFFFFFFF, false);
+        graphics.text(font, "§7Modrinth CDN 镜像: ", 10, 50, 0xFFFFFFFF, false);
+        graphics.text(font, "§7CurseForge Key: ", 10, 74, 0xFFFFFFFF, false);
+        graphics.text(font, "§7" + status, 10, 104, 0xFFFFFFFF, false);
         settings.render(graphics, mouseX, mouseY);
     }
 
@@ -209,6 +209,6 @@ public class SettingsScreen extends Screen {
     public void onClose() {
         PackHub.config().save();
         PackHub.syncSettings();
-        minecraft.setScreen(parent);
+        minecraft.gui.setScreen(parent);
     }
 }

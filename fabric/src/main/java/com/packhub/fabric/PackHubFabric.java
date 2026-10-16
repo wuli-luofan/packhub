@@ -5,12 +5,12 @@ import com.packhub.PackHub;
 import com.packhub.client.KeyMappings;
 import com.packhub.platform.LogBridge;
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
 
 /** Fabric 客户端入口。 */
@@ -27,7 +27,7 @@ public final class PackHubFabric implements ClientModInitializer {
         // 键值取自原版 InputConstants（26.3 起 GLFW 已被 SDL 取代，不能再引用 GLFW 常量）
         KeyMapping mapping = KeyMappings.createOpenHubMapping(KeyMappings.defaultOpenKey());
         if (mapping != null) {
-            openHubKey = KeyBindingHelper.registerKeyBinding(mapping);
+            openHubKey = KeyMappingHelper.registerKeyMapping(mapping);
         }
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
@@ -42,7 +42,7 @@ public final class PackHubFabric implements ClientModInitializer {
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> PackHub.shutdown());
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-            LiteralArgumentBuilder<FabricClientCommandSource> builder = ClientCommandManager.literal("packhub")
+            LiteralArgumentBuilder<FabricClientCommandSource> builder = ClientCommands.literal("packhub")
                     .executes(context -> {
                         PackHub.openHub();
                         return 1;

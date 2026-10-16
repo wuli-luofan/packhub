@@ -1,6 +1,6 @@
 package com.packhub.ui;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -138,7 +138,7 @@ public final class ListPanel<T> {
         scroll = Math.max(0, Math.min(scroll, max));
     }
 
-    public void render(GuiGraphics graphics, int mouseX, int mouseY) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         clampScroll();
         UiKit.panel(graphics, x, y, width, height);
         int first = (int) (scroll / rowHeight);
@@ -169,7 +169,7 @@ public final class ListPanel<T> {
             if (!item.tag.isEmpty()) {
                 int tagWidth = UiKit.font().width(item.tag);
                 int tagX = Math.max(textX, x + width - actionSpace - tagWidth - 8);
-                graphics.drawString(UiKit.font(), item.tag, tagX, rowY + 4, UiKit.COLOR_ACCENT, false);
+                graphics.text(UiKit.font(), item.tag, tagX, rowY + 4, UiKit.COLOR_ACCENT, false);
             }
 
             int actionX = x + width - 6;
@@ -191,7 +191,7 @@ public final class ListPanel<T> {
         UiKit.scrollbar(graphics, x + width - 2, y + 2, height - 4, fraction, visibleFraction);
 
         if (items.isEmpty()) {
-            graphics.drawCenteredString(UiKit.font(), "§7这里还没有内容", x + width / 2, y + height / 2 - 4, 0xFFFFFF);
+            UiKit.centered(graphics, "§7这里还没有内容", x + width / 2, y + height / 2 - 4, 0xFFFFFFFF);
         }
     }
 

@@ -79,21 +79,23 @@ public final class KeyMappings {
                 // 换下一个候选
             }
         }
-        // 注册一个自定义分类（1.21.6+ 提供 Category.register）
-        try {
-            Class<?> resourceLocation = Class.forName("net.minecraft.resources.ResourceLocation");
-            Object id;
+        // 注册一个自定义分类（26.x 里 ID 类型叫 Identifier，旧版本叫 ResourceLocation）
+        for (String idClass : new String[]{"net.minecraft.resources.Identifier", "net.minecraft.resources.ResourceLocation"}) {
             try {
-                id = resourceLocation.getMethod("parse", String.class).invoke(null, CATEGORY_ID);
+                Class<?> resourceClass = Class.forName(idClass);
+                Object id;
+                try {
+                    id = resourceClass.getMethod("parse", String.class).invoke(null, CATEGORY_ID);
+                } catch (Throwable t) {
+                    id = resourceClass.getConstructor(String.class).newInstance(CATEGORY_ID);
+                }
+                Method register = categoryClass.getMethod("register", resourceClass);
+                return register.invoke(null, id);
             } catch (Throwable t) {
-                id = resourceLocation.getConstructor(String.class).newInstance(CATEGORY_ID);
+                Log.debug("[PackHub] 用 %s 注册键位分类失败: %s", idClass, t.toString());
             }
-            Method register = categoryClass.getMethod("register", resourceLocation);
-            return register.invoke(null, id);
-        } catch (Throwable t) {
-            Log.debug("[PackHub] 注册自定义键位分类失败: %s", t.toString());
-            return null;
         }
+        return null;
     }
 
     private static KeyMapping tryCreateWithCategoryString(int defaultKeyCode) {

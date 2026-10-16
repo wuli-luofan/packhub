@@ -48,3 +48,12 @@ jar {
         rename { "${it}_${project.base.archivesName.get()}" }
     }
 }
+
+// 排查用：打印编译期 classpath（CI 里配合 javap 探测真实 API 签名）
+tasks.register('printClasspath') {
+    group = 'help'
+    description = '打印 Fabric 编译期 classpath'
+    doLast {
+        configurations.compileClasspath.files.each { println "CP: " + it }
+    }
+}

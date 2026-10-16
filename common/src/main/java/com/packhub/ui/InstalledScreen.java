@@ -7,7 +7,7 @@ import com.packhub.hotload.ResourcePackReloader;
 import com.packhub.hotload.plugin.LoadedPlugin;
 import com.packhub.installed.InstalledModIndex;
 import com.packhub.modrinth.ContentType;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -222,10 +222,10 @@ public class InstalledScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.render(graphics, mouseX, mouseY, partialTick);
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
         UiKit.header(graphics, Component.literal("PackHub · 已安装内容管理"), width);
-        graphics.drawString(font, "§7" + status, 12, 38, 0xFFFFFF, false);
+        graphics.text(font, "§7" + status, 12, 38, 0xFFFFFFFF, false);
         rows.render(graphics, mouseX, mouseY);
     }
 
@@ -247,7 +247,7 @@ public class InstalledScreen extends Screen {
 
     @Override
     public void onClose() {
-        minecraft.setScreen(parent);
+        minecraft.gui.setScreen(parent);
     }
 
     /** 把 jar 类型翻译成短标签。 */

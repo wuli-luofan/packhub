@@ -5,7 +5,7 @@ import com.packhub.hotload.GameRestarter;
 import com.packhub.hotload.JarKind;
 import com.packhub.hotload.ModJarInspector;
 import com.packhub.hotload.plugin.LoadedPlugin;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -130,16 +130,16 @@ public class HotLoadScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.render(graphics, mouseX, mouseY, partialTick);
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
         UiKit.header(graphics, Component.literal("PackHub · 热加载控制台"), width);
-        graphics.drawString(font, "§7" + PackHub.hotLoad().backendSummary()
-                + " · 运行环境 " + PackHub.MINECRAFT_VERSION, 12, 30, 0xFFFFFF, false);
-        graphics.drawString(font, "§7" + status, 12, 42, 0xFFFFFF, false);
-        graphics.drawString(font, "§b待重启生效的模组", 12, 62, 0xFFFFFF, false);
-        graphics.drawString(font, "§b运行中的热加载插件", 20 + (width - 30) / 2, 62, 0xFFFFFF, false);
-        graphics.drawString(font, "§8说明：资源包/光影/数据包可真正热重载；普通 Fabric/NeoForge 模组受 JVM 与 Mixin 限制必须重启进程，"
-                + "PackHub 用“软重启”自动完成这一步。", 10, height - 26, 0xFFFFFF, false);
+        graphics.text(font, "§7" + PackHub.hotLoad().backendSummary()
+                + " · 运行环境 " + PackHub.MINECRAFT_VERSION, 12, 30, 0xFFFFFFFF, false);
+        graphics.text(font, "§7" + status, 12, 42, 0xFFFFFFFF, false);
+        graphics.text(font, "§b待重启生效的模组", 12, 62, 0xFFFFFFFF, false);
+        graphics.text(font, "§b运行中的热加载插件", 20 + (width - 30) / 2, 62, 0xFFFFFFFF, false);
+        graphics.text(font, "§8说明：资源包/光影/数据包可真正热重载；普通 Fabric/NeoForge 模组受 JVM 与 Mixin 限制必须重启进程，"
+                + "PackHub 用“软重启”自动完成这一步。", 10, height - 26, 0xFFFFFFFF, false);
         pending.render(graphics, mouseX, mouseY);
         plugins.render(graphics, mouseX, mouseY);
         restartButton.active = !PackHub.hotLoad().pendingList().isEmpty();
@@ -163,6 +163,6 @@ public class HotLoadScreen extends Screen {
 
     @Override
     public void onClose() {
-        minecraft.setScreen(parent);
+        minecraft.gui.setScreen(parent);
     }
 }
