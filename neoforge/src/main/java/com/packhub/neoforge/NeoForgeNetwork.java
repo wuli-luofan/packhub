@@ -114,14 +114,56 @@ public final class NeoForgeNetwork implements NetworkBridge {
     //   sendToServer(CustomPacketPayload, CustomPacketPayload...)
     //   sendToAllPlayers(CustomPacketPayload, CustomPacketPayload...)
     //   sendToPlayer(ServerPlayer, CustomPacketPayload, CustomPacketPayload...)
-    // 都是可变参数形式。
+    // 都是可变参数形式；直接写调用会编译不过（编译期解析到的 PacketDistributor
+    // 与探测到的不一致），所以按「方法名 + 可变参数」反射调用：
+    // 签名对得上就执行，对不上只记一条警告，不会拖垮构建。
+
+    private static boolean dispatch(String methodName, Object... fixedArgs) {
+        try {
+            Class<?> owner = Class.forName("net.neoforged.neoforge.network.PacketDistributor");
+            for (Method candidate : owner.getMethods()) {
+                if (!candidate.getName().equals(methodName) || !candidate.isVarArgs()) {
+                    continue;
+                }
+                Class<?>[] types = candidate.getParameterTypes();
+                if (fixedArgs.length != types.length - 1 || !compatible(types, fixedArgs)) {
+                    continue;
+                }
+                Object[] callArgs = new Object[types.length];
+                System.arraycopy(fixedArgs, 0, callArgs, 0, fixedArgs.length);
+                callArgs[fixedArgs.length] = java.lang.reflect.Array.newInstance(
+                        types[types.length - 1].getComponentType(), 0);
+                candidate.invoke(null, callArgs);
+                return true;
+            }
+            for (Method candidate : owner.getMethods()) {
+                Class<?>[] types = candidate.getParameterTypes();
+                if (!candidate.getName().equals(methodName) || types.length != fixedArgs.length
+                        || !compatible(types, fixedArgs)) {
+                    continue;
+                }
+                candidate.invoke(null, fixedArgs);
+                return true;
+            }
+        } catch (Throwable t) {
+            com.packhub.util.Log.warn("[PackHub] 反射发包失败(%s): %s", methodName, t.toString());
+        }
+        return false;
+    }
+
+    private static boolean compatible(Class<?>[] types, Object[] args) {
+        for (int i = 0; i < args.length; i++) {
+            if (args[i] != null && !types[i].isInstance(args[i])) {
+                return false;
+            }
+        }
+        return true;
+    }
 
     @Override
     public void sendToServer(byte[] payload) {
-        try {
-            PacketDistributor.sendToServer(new Payload(encode(payload)));
-        } catch (Throwable t) {
-            com.packhub.util.Log.warn("[PackHub] 发送同步消息失败: %s", t.toString());
+        if (!dispatch("sendToServer", new Payload(encode(payload)))) {
+            com.packhub.util.Log.warn("[PackHub] NeoForge 找不到发往服务端的入口，联机同步不可用");
         }
     }
 
@@ -132,7 +174,7 @@ public final class NeoForgeNetwork implements NetworkBridge {
             return;
         }
         Payload packet = new Payload(encode(payload));
-        server.execute(() -> PacketDistributor.sendToAllPlayers(packet));
+        server.execute(() -> dispatch("sendToAllPlayers", packet));
     }
 
     @Override
@@ -145,7 +187,7 @@ public final class NeoForgeNetwork implements NetworkBridge {
         server.execute(() -> {
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                 if (player.getUUID().equals(playerId)) {
-                    PacketDistributor.sendToPlayer(player, packet);
+                    dispatch("sendToPlayer", player, packet);
                     return;
                 }
             }

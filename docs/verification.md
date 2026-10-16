@@ -66,11 +66,21 @@
 1. `PayloadTypeRegistry.playC2S()/playS2C()` 在 26.3 的 Fabric API 里**不存在**，
    正确名字是 `serverboundPlay()` / `clientboundPlay()`（CI 的 `javap` 探测步骤给出）；
 2. `ServerPlayer.server` 是私有字段，不能直接读，改用 `Minecraft.getSingleplayerServer()`；
-3. NeoForge 的 `PacketDistributor.sendToServer(Payload)` 在该版本不存在 → 改为按候选类名/方法名反射调用；
+3. NeoForge 的发包方法都是**可变参数**形式，签名由 CI 探测确认：
+   ```java
+   PacketDistributor.sendToServer(CustomPacketPayload, CustomPacketPayload...)
+   PacketDistributor.sendToAllPlayers(CustomPacketPayload, CustomPacketPayload...)
+   PacketDistributor.sendToPlayer(ServerPlayer, CustomPacketPayload, CustomPacketPayload...)
+   // 注册侧：event.registrar("1").playToServer/playToClient(Type, StreamCodec, IPayloadHandler)
+   ```
+   （一开始直接调用报 `cannot find symbol`，中途退化为「按候选方法名反射」，
+   探测出真实签名后又改回直接调用——反射版本对可变参数其实取不到方法，属于隐患）；
 4. `:smoke` 源集要显式 `include` 新增的纯逻辑类（`NetworkBridge` / `search/**` / `sync/**`），
    否则编译期就找不到符号；
 5. 中文词表最初用「遍历字典替换」导致语序被打乱（`optimization shader`），
-   改成从左到右最长匹配后恢复原语序。
+   改成从左到右最长匹配后恢复原语序；
+6. CI 里 `:neoforge:printClasspath` 任务原本只定义在 fabric 模块，探测步骤因此拿不到 classpath，
+   补上后 `javap` 才真正打印出 NeoForge 网络类签名。
 
 离线测试数量变化：逻辑测试 **16 → 23 → 30 项**（新增安装记录 2 项、联机同步 5 项、中文搜索 7 项），
 Mock 服务器测试保持 **13 项**。
