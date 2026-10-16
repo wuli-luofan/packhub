@@ -1,0 +1,46 @@
+plugins {
+    id 'fabric-loom' version "${loom_version}"
+}
+
+base {
+    archivesName = "${archives_base_name}-fabric"
+}
+
+// common 源码与资源直接编进同一个 jar：多加载器工程里最省事、最不容易出错的做法
+sourceSets {
+    main {
+        java.srcDir rootProject.file('common/src/main/java')
+        resources.srcDir rootProject.file('common/src/main/resources')
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    mappings loom.officialMojangMappings()
+
+    modImplementation "net.fabricmc:fabric-loader:${loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+jar {
+    from(rootProject.file('LICENSE')) {
+        rename { "${it}_${project.base.archivesName.get()}" }
+    }
+}
+
+loom {
+    runs {
+        client {
+            client()
+            ideConfigGenerated true
+            name = "PackHub Client"
+        }
+    }
+}

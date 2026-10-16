@@ -1,0 +1,35 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!tools/api-stubs/**/*.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.eclipse/
+.settings/
+.classpath
+.project
+
+# Java
+*.class
+
+# Minecraft run directory（runClient 生成）
+run/
+runs/
+
+# 本地构建验证产物
+build/offline-check/
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 密钥（千万别提交）
+*.pem
+*.key
+id_ed25519*
+id_rsa*
+.ssh/

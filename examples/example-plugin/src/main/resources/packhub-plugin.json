@@ -1,0 +1,9 @@
+{
+  "id": "example-plugin",
+  "name": "Example Hot-Load Plugin",
+  "version": "1.0.0",
+  "main": "com.example.packhub.ExamplePlugin",
+  "apiVersion": 1,
+  "description": "演示 PackHub 可热加载插件的生命周期：加载、每 tick、资源重载、卸载",
+  "authors": ["PackHub"]
+}

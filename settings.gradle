@@ -1,0 +1,51 @@
+// 仓库顺序可以在命令行切换：
+//   gradlew build                          -> 国内镜像优先（默认，适合中国网络）
+//   gradlew build -Ppackhub.repos=official -> 官方仓库优先（镜像不通时用）
+pluginManagement {
+    def mirrorsFirst = !((gradle.startParameter.projectProperties['packhub.repos'] ?: 'mirrors')
+            .toString().equalsIgnoreCase('official'))
+
+    repositories {
+        def mirrors = {
+            maven {
+                name = 'BMCLAPI'
+                url = 'https://bmclapi2.bangbang93.com/maven/'
+            }
+            maven {
+                name = 'TencentCloud'
+                url = 'https://mirrors.cloud.tencent.com/nexus/repository/maven-public/'
+            }
+            maven {
+                name = 'AliyunPublic'
+                url = 'https://maven.aliyun.com/repository/public/'
+            }
+        }
+        def official = {
+            maven {
+                name = 'Fabric'
+                url = 'https://maven.fabricmc.net/'
+            }
+        }
+        if (mirrorsFirst) {
+            mirrors()
+            official()
+        } else {
+            official()
+            mirrors()
+        }
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'packhub'
+
+include 'fabric'
+include 'smoke'
+
+// NeoForge 模块默认参与构建；如果拉不到 NeoForge 依赖（网络原因），
+// 可以用 -Ppackhub.neoforge=false 跳过，例如： gradlew build -Ppackhub.neoforge=false
+if (!((gradle.startParameter.projectProperties['packhub.neoforge'] ?: 'true')
+        .toString().equalsIgnoreCase('false'))) {
+    include 'neoforge'
+}

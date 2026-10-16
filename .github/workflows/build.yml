@@ -1,0 +1,45 @@
+name: Build PackHub
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: 安装 Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.8.1'
+
+      - name: 离线逻辑测试（jar 元数据识别 / 待重启队列 / 搜索分面）
+        run: gradle :smoke:logic --no-daemon -Ppackhub.repos=official
+
+      - name: Mock 服务器测试（Modrinth + CurseForge 两条链路）
+        run: gradle :smoke:mock --no-daemon -Ppackhub.repos=official
+
+      - name: 编译 Fabric 与 NeoForge 两个 jar
+        run: gradle build --no-daemon -Ppackhub.repos=official
+
+      - name: 真实 API 冒烟测试（Modrinth 搜索/版本/下载）
+        run: gradle :smoke:run --no-daemon -Ppackhub.repos=official
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: packhub-jars
+          path: |
+            fabric/build/libs/*.jar
+            neoforge/build/libs/*.jar
+          if-no-files-found: warn

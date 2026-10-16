@@ -1,0 +1,61 @@
+plugins {
+    id 'application'
+}
+
+// 只编译 common 里不依赖 Minecraft 的纯 Java 部分（两个内容源客户端、HTTP 工具、jar 扫描、
+// 待重启队列等），用来在命令行里跑离线测试与真实 API 冒烟测试。
+sourceSets {
+    main {
+        java {
+            srcDirs = [
+                    'src/main/java',
+                    rootProject.file('common/src/main/java')
+            ]
+            // 只取不依赖 Minecraft 的部分，保证脱离游戏也能编译运行
+            include 'com/packhub/smoke/**'
+            include 'com/packhub/modrinth/**'
+            include 'com/packhub/curseforge/**'
+            include 'com/packhub/http/**'
+            include 'com/packhub/source/**'
+            include 'com/packhub/util/Log.java'
+            include 'com/packhub/util/Hashes.java'
+            include 'com/packhub/platform/Platform.java'
+            include 'com/packhub/installed/**'
+            include 'com/packhub/hotload/PendingRestart.java'
+            include 'com/packhub/hotload/JarKind.java'
+            include 'com/packhub/hotload/ModJarInspector.java'
+        }
+    }
+}
+
+dependencies {
+    implementation 'com.google.code.gson:gson:2.11.0'
+}
+
+application {
+    mainClass = 'com.packhub.smoke.SmokeTest'
+}
+
+// 离线逻辑测试（不需要网络）：gradlew :smoke:logic
+tasks.register('logic', JavaExec) {
+    group = 'verification'
+    description = '不依赖 Minecraft、不依赖网络的逻辑测试'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.packhub.smoke.LogicTests'
+}
+
+// 本地 mock 服务器测试（不需要网络 / 不需要 API Key）：gradlew :smoke:mock
+tasks.register('mock', JavaExec) {
+    group = 'verification'
+    description = '用本地 mock HTTP 服务器验证 Modrinth 与 CurseForge 两条链路'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.packhub.smoke.MockServerTests'
+}
+
+// 联网冒烟测试（真实 API）：gradlew :smoke:run
+// 全部验证：gradlew :smoke:verifyAll
+tasks.register('verifyAll') {
+    group = 'verification'
+    description = '离线逻辑测试 + mock 服务器测试 + 真实 API 冒烟测试'
+    dependsOn 'logic', 'mock', 'run'
+}

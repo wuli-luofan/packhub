@@ -1,0 +1,29 @@
+plugins {
+    id 'java'
+}
+
+group = 'com.example'
+version = '1.0.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // 把 PackHub 编出来的 jar 放到 libs/ 下即可拿到插件 API（PackHubPlugin / PluginContext）
+    compileOnly fileTree(dir: 'libs', include: ['*.jar'])
+}
+
+jar {
+    // 插件描述文件必须放在 jar 根目录
+    from('src/main/resources') {
+        include 'packhub-plugin.json'
+    }
+    archiveBaseName = 'packhub-example-plugin'
+}

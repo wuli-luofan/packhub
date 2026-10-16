@@ -1,0 +1,15 @@
+{
+  "key.packhub.open_hub": "Open PackHub",
+  "category.packhub": "PackHub",
+  "packhub.type.mod": "Mod",
+  "packhub.type.resourcepack": "Resource Pack",
+  "packhub.type.shader": "Shader Pack",
+  "packhub.type.datapack": "Data Pack",
+  "packhub.type.modpack": "Modpack",
+  "packhub.source.modrinth": "Modrinth",
+  "packhub.source.curseforge": "CurseForge",
+  "packhub.jar_kind.packhub_plugin": "Hot-loadable plugin",
+  "packhub.jar_kind.fabric_mod": "Fabric mod (restart)",
+  "packhub.jar_kind.neoforge_mod": "NeoForge mod (restart)",
+  "packhub.jar_kind.unknown": "Unknown jar"
+}

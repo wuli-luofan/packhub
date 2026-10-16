@@ -1,0 +1,53 @@
+package com.packhub.fabric;
+
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.packhub.PackHub;
+import com.packhub.client.KeyMappings;
+import com.packhub.platform.LogBridge;
+import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.minecraft.client.KeyMapping;
+import org.lwjgl.glfw.GLFW;
+
+/** Fabric 客户端入口。 */
+public final class PackHubFabric implements ClientModInitializer {
+
+    private static KeyMapping openHubKey;
+
+    @Override
+    public void onInitializeClient() {
+        LogBridge.install();
+        PackHub.init(new FabricPlatform());
+
+        // 键位构造走反射兼容层：不同版本 KeyMapping 的分类参数类型不同
+        KeyMapping mapping = KeyMappings.createOpenHubMapping(GLFW.GLFW_KEY_P);
+        if (mapping != null) {
+            openHubKey = KeyBindingHelper.registerKeyBinding(mapping);
+        }
+
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (openHubKey != null) {
+                while (openHubKey.consumeClick()) {
+                    PackHub.openHub();
+                }
+            }
+            PackHub.clientTick();
+        });
+
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> PackHub.shutdown());
+
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+            LiteralArgumentBuilder<FabricClientCommandSource> builder = ClientCommandManager.literal("packhub")
+                    .executes(context -> {
+                        PackHub.openHub();
+                        return 1;
+                    });
+            dispatcher.register(builder);
+        });
+    }
+}

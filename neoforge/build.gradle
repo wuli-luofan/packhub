@@ -1,0 +1,38 @@
+plugins {
+    id 'net.neoforged.moddev' version "${moddev_version}"
+}
+
+base {
+    archivesName = "${archives_base_name}-neoforge"
+}
+
+sourceSets {
+    main {
+        java.srcDir rootProject.file('common/src/main/java')
+        resources.srcDir rootProject.file('common/src/main/resources')
+    }
+}
+
+neoForge {
+    version = project.neoforge_version
+
+    // 只做客户端模组
+    mods {
+        packhub {
+            sourceSet sourceSets.main
+        }
+    }
+
+    runs {
+        client {
+            client()
+        }
+    }
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("META-INF/neoforge.mods.toml") {
+        expand "version": project.version
+    }
+}

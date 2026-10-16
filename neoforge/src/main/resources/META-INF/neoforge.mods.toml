@@ -1,0 +1,29 @@
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "MIT"
+issueTrackerURL = "https://github.com/"
+
+[[mods]]
+modId = "packhub"
+version = "${version}"
+displayName = "PackHub"
+authors = "PackHub"
+logoFile = "assets/packhub/icon.png"
+description = '''
+游戏内下载资源包 / 材质包 / 光影包 / 模组，并支持热加载：
+资源包与光影真热重载、PackHub 插件格式的模组运行时热加载、普通模组一键软重启热载。
+'''
+
+[[dependencies.packhub]]
+modId = "neoforge"
+type = "required"
+versionRange = "[26.3,)"
+ordering = "NONE"
+side = "CLIENT"
+
+[[dependencies.packhub]]
+modId = "minecraft"
+type = "required"
+versionRange = "[26.3,26.4)"
+ordering = "NONE"
+side = "CLIENT"

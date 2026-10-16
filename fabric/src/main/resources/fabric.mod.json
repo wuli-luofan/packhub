@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "packhub",
+  "version": "${version}",
+  "name": "PackHub",
+  "description": "游戏内下载资源包 / 材质包 / 光影包 / 模组，并支持热加载（资源包与光影真热重载、插件式模组运行时热加载、普通模组软重启热载）。",
+  "authors": [
+    "PackHub"
+  ],
+  "contact": {
+    "homepage": "https://modrinth.com/",
+    "sources": "https://github.com/"
+  },
+  "license": "MIT",
+  "icon": "assets/packhub/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.packhub.fabric.PackHubFabric"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.0",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}

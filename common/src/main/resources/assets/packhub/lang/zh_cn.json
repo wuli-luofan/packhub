@@ -1,0 +1,15 @@
+{
+  "key.packhub.open_hub": "打开 PackHub",
+  "category.packhub": "PackHub",
+  "packhub.type.mod": "模组",
+  "packhub.type.resourcepack": "资源包/材质",
+  "packhub.type.shader": "光影包",
+  "packhub.type.datapack": "数据包",
+  "packhub.type.modpack": "整合包",
+  "packhub.source.modrinth": "Modrinth",
+  "packhub.source.curseforge": "CurseForge",
+  "packhub.jar_kind.packhub_plugin": "可热加载插件",
+  "packhub.jar_kind.fabric_mod": "Fabric 模组（需重启）",
+  "packhub.jar_kind.neoforge_mod": "NeoForge 模组（需重启）",
+  "packhub.jar_kind.unknown": "未知 jar"
+}
