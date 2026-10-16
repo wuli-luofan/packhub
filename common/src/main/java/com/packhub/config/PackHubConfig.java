@@ -74,6 +74,23 @@ public final class PackHubConfig {
 
     /** 显示 Toast 提示。 */
     public boolean showToasts = true;
+    /** 开始安装时自动打开进度界面（可以在里面取消安装）。 */
+    public boolean autoOpenProgressScreen = true;
+    /** 安装完成后弹出「装了什么」的通知。 */
+    public boolean showInstallSummary = true;
+
+    // ------------------------------------------------------------ 联机同步
+
+    /** 作为房主时，把 PackHub 装过的模组清单同步给其他玩家。 */
+    public boolean enableHostModSync = true;
+    /** 作为客户端时，允许接受房主下发的模组（联机自动下载）。 */
+    public boolean allowServerModPush = true;
+    /** 所有玩家下载完成后，房主端自动重启（默认关闭：先让房主确认再重启）。 */
+    public boolean syncAutoRestart = false;
+    /** 同步时是否也带上资源包 / 光影（默认只同步模组）。 */
+    public boolean syncResourcePacks = false;
+    /** 单个同步文件的大小上限（MB），超过就不下发，避免误推大整合包。 */
+    public int syncMaxFileSizeMb = 200;
     /** 搜索结果每页数量。 */
     public int searchPageSize = 20;
     /** 是否过滤掉与当前加载器不兼容的模组。 */

@@ -160,10 +160,16 @@ public class CurseForgeClient {
     // ------------------------------------------------------------ 下载
 
     public Path download(VersionFile file, Path target, ProgressListener listener) throws SourceException {
+        return download(file, target, listener, com.packhub.http.CancelToken.NONE);
+    }
+
+    /** 下载文件，支持取消。 */
+    public Path download(VersionFile file, Path target, ProgressListener listener,
+                         com.packhub.http.CancelToken token) throws SourceException {
         if (file == null || file.url == null || file.url.isBlank()) {
             throw new CurseForgeException("该文件没有可用的下载地址（该项目可能禁止 API 分发）", 0);
         }
-        return Http.download(resolveUrl(file.url), target, listener, file.size, file.sha1, httpOptions());
+        return Http.download(resolveUrl(file.url), target, listener, file.size, file.sha1, httpOptions(), token);
     }
 
     /**

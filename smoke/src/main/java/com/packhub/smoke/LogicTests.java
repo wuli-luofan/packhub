@@ -190,6 +190,32 @@ public final class LogicTests {
             return Hashes.sha1(file).equals("a9993e364706816aba3e25717850c26c9cd0d89d");
         });
 
+        // ---------------------------------------------------------- 安装记录（联机同步的清单来源）
+        check("安装记录：写入 / 去重 / 按文件保留最新", () -> {
+            Path registryFile = work.resolve("install-registry.json");
+            com.packhub.installed.InstallRegistry registry = new com.packhub.installed.InstallRegistry(registryFile);
+            registry.record(resultFor("Demo Mod", "demo-mod.jar", "AABB", "V1", "1.0", ContentType.MOD, 1000));
+            registry.record(resultFor("Demo Mod", "demo-mod.jar", "AABB", "V2", "1.1", ContentType.MOD, 2000));
+            registry.record(resultFor("Demo Pack", "demo-pack.zip", "CCDD", "P1", "2.0", ContentType.RESOURCEPACK, 500));
+            com.packhub.installed.InstallRegistry reloaded =
+                    new com.packhub.installed.InstallRegistry(registryFile);
+            return reloaded.size() == 2
+                    && reloaded.byFileName("demo-mod.jar").versionNumber.equals("1.1")
+                    && reloaded.byFileName("demo-mod.jar").size == 2000;
+        });
+        check("安装记录：只把还在 mods/ 里的模组算作可同步", () -> {
+            Path registryFile = work.resolve("install-registry-2.json");
+            Path modsDir = work.resolve("mods-for-sync");
+            Files.createDirectories(modsDir);
+            com.packhub.installed.InstallRegistry registry = new com.packhub.installed.InstallRegistry(registryFile);
+            registry.record(resultFor("Present Mod", "present.jar", "1111", "V1", "1.0", ContentType.MOD, 100));
+            registry.record(resultFor("Missing Mod", "missing.jar", "2222", "V1", "1.0", ContentType.MOD, 100));
+            registry.record(resultFor("A Pack", "pack.zip", "3333", "V1", "1.0", ContentType.RESOURCEPACK, 100));
+            Files.write(modsDir.resolve("present.jar"), new byte[]{1, 2, 3});
+            List<com.packhub.installed.InstallRegistry.Entry> shareable = registry.shareableMods(modsDir);
+            return shareable.size() == 1 && shareable.get(0).fileName.equals("present.jar");
+        });
+
         System.out.println();
         System.out.println("=== 结果: 通过 " + passed + " 项，失败 " + failed + " 项 ===");
         if (failed > 0) {
@@ -201,6 +227,30 @@ public final class LogicTests {
 
     private static void writeJar(Path target, String entryName, String content) throws IOException {
         writeJar(target, entryName, content.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /** 造一个 InstallResult，用来测试安装记录。 */
+    private static com.packhub.download.InstallResult resultFor(String title, String fileName, String projectId,
+                                                               String versionId, String versionNumber,
+                                                               ContentType type, long size) {
+        com.packhub.modrinth.model.ProjectSummary project = new com.packhub.modrinth.model.ProjectSummary();
+        project.title = title;
+        project.slug = fileName.replace(".jar", "").replace(".zip", "");
+        project.projectId = projectId;
+        project.source = com.packhub.source.ContentSource.MODRINTH;
+
+        com.packhub.modrinth.model.ProjectVersion version = new com.packhub.modrinth.model.ProjectVersion();
+        version.id = versionId;
+        version.versionNumber = versionNumber;
+
+        com.packhub.modrinth.model.VersionFile file = new com.packhub.modrinth.model.VersionFile();
+        file.filename = fileName;
+        file.url = "https://example.invalid/" + fileName;
+        file.sha1 = "0".repeat(40);
+        file.size = size;
+
+        return new com.packhub.download.InstallResult(project, version, file, type,
+                Path.of("out").resolve(fileName), false, false, "测试");
     }
 
     private static void writeJar(Path target, String entryName, byte[] content) throws IOException {

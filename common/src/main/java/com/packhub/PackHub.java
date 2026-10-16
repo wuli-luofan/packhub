@@ -4,13 +4,17 @@ import com.packhub.config.PackHubConfig;
 import com.packhub.curseforge.CurseForgeClient;
 import com.packhub.curseforge.CurseForgeSettings;
 import com.packhub.download.DownloadManager;
+import com.packhub.download.InstallResult;
 import com.packhub.hotload.HotLoadManager;
 import com.packhub.modrinth.ModrinthClient;
 import com.packhub.modrinth.ModrinthSettings;
 import com.packhub.platform.Platform;
 import com.packhub.platform.Platforms;
 import com.packhub.ui.HubScreen;
+import com.packhub.ui.InstallProgressScreen;
+import com.packhub.ui.Toasts;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,6 +57,7 @@ public final class PackHub {
         downloads = new DownloadManager(platformImpl, config, modrinth, curseForge);
         hotLoad = new HotLoadManager(platformImpl, config);
         hotLoad.start();
+        installNotification();
 
         LOGGER.info("[PackHub] ready on {} {} (Minecraft {}, hot-load={})",
                 platformImpl.loaderName(), platformImpl.loaderVersion(), MINECRAFT_VERSION,
@@ -155,6 +160,60 @@ public final class PackHub {
     public static void openHub() {
         Minecraft minecraft = Minecraft.getInstance();
         minecraft.execute(() -> minecraft.gui.setScreen(new HubScreen(null)));
+    }
+
+    /** 安装开始时打开进度界面（可在里面取消安装）。 */
+    public static void openInstallProgress(Screen parent) {
+        if (config == null || !config.autoOpenProgressScreen) {
+            return;
+        }
+        openInstallProgressAlways(parent);
+    }
+
+    /** 无论配置如何都打开进度界面（给「进度」按钮用）。 */
+    public static void openInstallProgressAlways(Screen parent) {
+        Minecraft minecraft = Minecraft.getInstance();
+        minecraft.execute(() -> minecraft.gui.setScreen(new InstallProgressScreen(parent)));
+    }
+
+    /** 有任务在跑时打开进度界面，否则提示。 */
+    public static void openIfBusy(Screen parent) {
+        if (downloads != null && downloads.busy()) {
+            openInstallProgressAlways(parent);
+        } else {
+            Toasts.show("PackHub", "当前没有进行中的安装任务");
+        }
+    }
+
+    /** 统一的安装结果通知：装了哪个项目、哪个版本、落到哪个目录。 */
+    private static void installNotification() {
+        downloads.listener(new DownloadManager.Listener() {
+            @Override
+            public void onInstalled(InstallResult result) {
+                LOGGER.info("[PackHub] 安装完成: {} -> {}", result.title(), result.path);
+                if (!config.showInstallSummary) {
+                    return;
+                }
+                String version = result.version != null && result.version.versionNumber != null
+                        ? " " + result.version.versionNumber : "";
+                String folder = result.type != null ? result.type.installFolder() : "mods";
+                String fileName = result.file != null
+                        ? result.file.filename
+                        : String.valueOf(result.path.getFileName());
+                String extra = result.needsRestart ? "（需重启生效）" : (result.hotReloaded ? "（已热加载）" : "");
+                Toasts.show("安装完成", result.title() + version + " → " + folder + "/" + fileName + extra);
+            }
+
+            @Override
+            public void onFailed(String title, String error) {
+                Toasts.error("安装失败", title + "：" + error);
+            }
+
+            @Override
+            public void onCancelled(String title) {
+                Toasts.show("已取消安装", title);
+            }
+        });
     }
 
     /** 客户端每 tick 调用（由加载器模块挂接）。 */

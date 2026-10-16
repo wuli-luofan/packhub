@@ -21,6 +21,7 @@ sourceSets {
             include 'com/packhub/util/Hashes.java'
             include 'com/packhub/platform/Platform.java'
             include 'com/packhub/installed/**'
+            include 'com/packhub/download/InstallResult.java'
             include 'com/packhub/hotload/PendingRestart.java'
             include 'com/packhub/hotload/JarKind.java'
             include 'com/packhub/hotload/ModJarInspector.java'

@@ -79,10 +79,16 @@ public final class Http {
 
     /** GET 一个文本响应，带重试与 429 等待。 */
     public static String get(String url, Options options) throws SourceException {
+        return get(url, options, CancelToken.NONE);
+    }
+
+    /** GET 一个文本响应；token 被取消时立刻抛出，不再重试。 */
+    public static String get(String url, Options options, CancelToken token) throws SourceException {
         SourceException lastError = null;
         for (int attempt = 1; attempt <= options.attempts(); attempt++) {
             HttpURLConnection connection = null;
             try {
+                token.throwIfCancelled();
                 connection = open(url, "GET", options);
                 int code = connection.getResponseCode();
                 String body = readBody(connection, code);
@@ -102,6 +108,8 @@ public final class Http {
                     continue;
                 }
                 throw new SourceException("HTTP " + code + " " + url + " -> " + preview(body), code);
+            } catch (CancelledException e) {
+                throw new SourceException("已取消：" + url, 0, e);
             } catch (IOException e) {
                 lastError = new SourceException("网络错误: " + e, 0, e);
                 if (attempt < options.attempts()) {
@@ -121,23 +129,31 @@ public final class Http {
      */
     public static Path download(String url, Path target, ProgressListener listener, long expectedSize,
                                String expectedSha1, Options options) throws SourceException {
+        return download(url, target, listener, expectedSize, expectedSha1, options, CancelToken.NONE);
+    }
+
+    /**
+     * 下载到目标路径，支持取消：被取消时删除半截的 .part 文件，并且不重试。
+     */
+    public static Path download(String url, Path target, ProgressListener listener, long expectedSize,
+                               String expectedSha1, Options options, CancelToken token) throws SourceException {
+        if (listener == null) {
+            listener = ProgressListener.NONE;
+        }
+        Path part = target.resolveSibling(target.getFileName() + ".part");
         IOException lastError = null;
         for (int attempt = 1; attempt <= options.attempts(); attempt++) {
             HttpURLConnection connection = null;
             try {
+                token.throwIfCancelled();
                 Files.createDirectories(target.getParent());
-                Path part = target.resolveSibling(target.getFileName() + ".part");
-                long total;
-                if (listener == null) {
-                    listener = ProgressListener.NONE;
-                }
                 connection = open(url, "GET", options);
                 int code = connection.getResponseCode();
                 if (code >= 400) {
                     throw new IOException("HTTP " + code + " 下载 " + url);
                 }
                 long contentLength = connection.getContentLengthLong();
-                total = contentLength > 0 ? contentLength : expectedSize;
+                long total = contentLength > 0 ? contentLength : expectedSize;
                 long done = 0;
                 long lastNotify = 0L;
                 byte[] buffer = new byte[32768];
@@ -145,6 +161,7 @@ public final class Http {
                      OutputStream out = Files.newOutputStream(part)) {
                     int read;
                     while ((read = in.read(buffer)) > 0) {
+                        token.throwIfCancelled();
                         out.write(buffer, 0, read);
                         done += read;
                         long now = System.currentTimeMillis();
@@ -165,6 +182,9 @@ public final class Http {
                 Files.move(part, target, StandardCopyOption.REPLACE_EXISTING);
                 Log.info("[PackHub] 已下载 %s (%d 字节)", target.getFileName(), done);
                 return target;
+            } catch (CancelledException e) {
+                deleteQuietly(part);
+                throw new SourceException("已取消: " + target.getFileName(), 0, e);
             } catch (IOException e) {
                 lastError = e;
                 Log.warn("[PackHub] 第 %d/%d 次下载 %s 失败: %s", attempt, options.attempts(), url, e.toString());
@@ -177,7 +197,16 @@ public final class Http {
                 }
             }
         }
+        deleteQuietly(part);
         throw new SourceException("下载失败: " + url, 0, lastError);
+    }
+
+    private static void deleteQuietly(Path path) {
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException ignored) {
+            // 忽略
+        }
     }
 
     /** 解析 URL（语法错误按网络错误处理，交给上层重试/报错逻辑）。 */

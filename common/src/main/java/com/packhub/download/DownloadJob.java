@@ -1,11 +1,12 @@
 package com.packhub.download;
 
+import com.packhub.http.CancelToken;
 import com.packhub.modrinth.ContentType;
 
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicLong;
 
-/** 一个正在进行的下载任务，供界面显示进度。 */
+/** 一个正在进行的下载任务，供界面显示进度与取消。 */
 public final class DownloadJob {
     public enum Status { QUEUED, DOWNLOADING, VERIFYING, DONE, FAILED, CANCELLED }
 
@@ -17,6 +18,7 @@ public final class DownloadJob {
     public final ContentType type;
     public final long expectedSize;
 
+    private final CancelToken cancelToken = new CancelToken();
     private volatile Status status = Status.QUEUED;
     private volatile long downloaded;
     private volatile long total;
@@ -79,6 +81,26 @@ public final class DownloadJob {
 
     public boolean finished() {
         return status == Status.DONE || status == Status.FAILED || status == Status.CANCELLED;
+    }
+
+    // ------------------------------------------------------------ 取消
+
+    /** 下载线程会周期性检查这个令牌。 */
+    public CancelToken cancelToken() {
+        return cancelToken;
+    }
+
+    public boolean cancelled() {
+        return cancelToken.isCancelled();
+    }
+
+    /** 请求取消：排队中的任务会直接标记为已取消，下载中的会在下一块数据处停下。 */
+    public void requestCancel(String reason) {
+        cancelToken.cancel(reason);
+        if (status == Status.QUEUED) {
+            status = Status.CANCELLED;
+            message = cancelToken.reason();
+        }
     }
 
     public String describe() {

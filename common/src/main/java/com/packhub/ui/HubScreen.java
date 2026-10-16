@@ -93,6 +93,8 @@ public class HubScreen extends Screen {
             runSearch(offset);
         }).bounds(74, height - 28, 60, 20).build());
 
+        addRenderableWidget(Button.builder(Component.literal("进度"), button -> PackHub.openIfBusy(this))
+                .bounds(140, height - 28, 54, 20).build());
         addRenderableWidget(Button.builder(Component.literal("已安装"), button ->
                 minecraft.gui.setScreen(new InstalledScreen(this))).bounds(width - 250, height - 28, 60, 20).build());
         addRenderableWidget(Button.builder(Component.literal("热加载"), button ->
@@ -213,6 +215,7 @@ public class HubScreen extends Screen {
             return;
         }
         status = "开始下载 " + version.primaryFile().filename + "…";
+        PackHub.openInstallProgress(this);
         PackHub.downloads().install(project, version, version.primaryFile(), type, true)
                 .whenComplete((installResult, error) -> Async.onClient(() -> {
                     if (error != null) {

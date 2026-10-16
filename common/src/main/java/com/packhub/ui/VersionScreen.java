@@ -143,6 +143,7 @@ public class VersionScreen extends Screen {
             return;
         }
         status = "开始下载 " + file.filename + "（" + file.prettySize() + "）…";
+        PackHub.openInstallProgress(this);
         PackHub.downloads().install(project, version, file, type, autoEnable)
                 .whenComplete((result, error) -> Async.onClient(() -> {
                     if (error != null) {

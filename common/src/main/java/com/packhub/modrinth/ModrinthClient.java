@@ -111,11 +111,17 @@ public class ModrinthClient {
      * 下载一个版本文件到目标路径：先写 .part，校验 sha1 后原子替换。
      */
     public Path download(VersionFile file, Path target, ProgressListener listener) throws ModrinthException {
+        return download(file, target, listener, com.packhub.http.CancelToken.NONE);
+    }
+
+    /** 同上，但支持取消。 */
+    public Path download(VersionFile file, Path target, ProgressListener listener,
+                         com.packhub.http.CancelToken token) throws ModrinthException {
         if (file == null || file.url == null || file.url.isBlank()) {
             throw new ModrinthException("该版本没有可下载文件", 0);
         }
         try {
-            return Http.download(resolveUrl(file.url), target, listener, file.size, file.sha1, httpOptions());
+            return Http.download(resolveUrl(file.url), target, listener, file.size, file.sha1, httpOptions(), token);
         } catch (SourceException e) {
             throw new ModrinthException(e.getMessage(), e.statusCode(), e);
         }

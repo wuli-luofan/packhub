@@ -5,6 +5,7 @@ import com.packhub.config.PackHubConfig;
 import com.packhub.curseforge.CurseForgeClient;
 import com.packhub.hotload.HotLoadOutcome;
 import com.packhub.http.ProgressListener;
+import com.packhub.installed.InstallRegistry;
 import com.packhub.installed.InstalledModIndex;
 import com.packhub.modrinth.ContentType;
 import com.packhub.modrinth.ModrinthClient;
@@ -46,12 +47,16 @@ public class DownloadManager {
         void onInstalled(InstallResult result);
 
         void onFailed(String title, String error);
+
+        default void onCancelled(String title) {
+        }
     }
 
     private final Platform platform;
     private final PackHubConfig config;
     private final ModrinthClient modrinth;
     private final CurseForgeClient curseForge;
+    private final InstallRegistry registry;
     private final ExecutorService downloads;
     private final ExecutorService metadata;
     private final Map<Long, DownloadJob> jobs = new ConcurrentHashMap<>();
@@ -64,9 +69,17 @@ public class DownloadManager {
         this.config = config;
         this.modrinth = modrinth;
         this.curseForge = curseForge;
+        this.registry = new InstallRegistry(config.file() != null
+                ? config.file().getParent().resolve("install-registry.json")
+                : platform.configDir().resolve("packhub").resolve("install-registry.json"));
         int poolSize = Math.max(1, config.maxConcurrentDownloads);
         this.downloads = Executors.newFixedThreadPool(poolSize, namedFactory("PackHub-Download"));
         this.metadata = Executors.newFixedThreadPool(2, namedFactory("PackHub-Metadata"));
+    }
+
+    /** 安装记录（同时是联机同步的清单来源）。 */
+    public InstallRegistry registry() {
+        return registry;
     }
 
     public void listener(Listener value) {
@@ -91,6 +104,48 @@ public class DownloadManager {
 
     public boolean busy() {
         return !activeJobs().isEmpty();
+    }
+
+    // ------------------------------------------------------------ 取消 / 总体进度
+
+    /** 取消单个任务。 */
+    public boolean cancelJob(long jobId) {
+        DownloadJob job = jobs.get(jobId);
+        if (job == null || job.finished()) {
+            return false;
+        }
+        job.requestCancel("用户取消");
+        Log.info("[PackHub] 已请求取消: %s", job.fileName);
+        return true;
+    }
+
+    /** 取消当前所有未完成任务。 */
+    public int cancelAll() {
+        int count = 0;
+        for (DownloadJob job : jobs.values()) {
+            if (!job.finished()) {
+                job.requestCancel("用户取消全部");
+                count++;
+            }
+        }
+        Log.info("[PackHub] 已请求取消全部任务（%d 个）", count);
+        return count;
+    }
+
+    /** 总体进度：返回 {已下载字节, 总字节}，供进度界面画总进度条。 */
+    public long[] overallProgress() {
+        long done = 0;
+        long total = 0;
+        for (DownloadJob job : jobs.values()) {
+            total += Math.max(0, job.total());
+            done += Math.max(0, Math.min(job.downloaded(), Math.max(job.total(), job.downloaded())));
+        }
+        return new long[]{done, total};
+    }
+
+    /** 是否所有任务都已结束。 */
+    public boolean allFinished() {
+        return activeJobs().isEmpty();
     }
 
     // ------------------------------------------------------------ 查询
@@ -160,8 +215,9 @@ public class DownloadManager {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 if (config.autoResolveDependencies) {
-                    resolveDependencies(version, type, 0);
+                    resolveDependencies(version, type, 0, job.cancelToken());
                 }
+                job.cancelToken().throwIfCancelled();
                 job.status(DownloadJob.Status.DOWNLOADING);
                 Path target = InstallTargets.resolve(platform, type).resolve(file.filename);
                 if (isSameFile(target, file)) {
@@ -170,10 +226,12 @@ public class DownloadManager {
                     job.message("已存在相同文件，跳过下载");
                     InstallResult result = new InstallResult(project, version, file, type, target, false, false,
                             "已安装（文件已存在）");
+                    registry.record(result);
                     notifyInstalled(result);
                     return result;
                 }
-                downloadFile(version != null ? version.source : ContentSource.MODRINTH, file, target, job::progress);
+                downloadFile(version != null ? version.source : ContentSource.MODRINTH, file, target,
+                        job::progress, job.cancelToken());
                 job.status(DownloadJob.Status.VERIFYING);
 
                 HotLoadOutcome outcome = PackHub.hotLoad().apply(type, target, enableAfterInstall);
@@ -186,14 +244,32 @@ public class DownloadManager {
                         : (outcome.hotReloaded() ? "已下载并热加载" : "已下载");
                 InstallResult result = new InstallResult(project, version, file, type, target,
                         outcome.hotReloaded(), outcome.needsRestart(), message);
+                registry.record(result);
                 notifyInstalled(result);
                 return result;
             } catch (SourceException e) {
+                if (job.cancelled()) {
+                    job.status(DownloadJob.Status.CANCELLED);
+                    job.message("已取消");
+                    notifyCancelled(job.projectTitle);
+                    throw new RuntimeException(e);
+                }
                 job.status(DownloadJob.Status.FAILED);
                 job.message(e.getMessage());
                 notifyFailed(job.projectTitle, e.getMessage());
                 throw new RuntimeException(e);
+            } catch (com.packhub.http.CancelledException e) {
+                job.status(DownloadJob.Status.CANCELLED);
+                job.message("已取消");
+                notifyCancelled(job.projectTitle);
+                throw new RuntimeException(e);
             } catch (Throwable t) {
+                if (job.cancelled()) {
+                    job.status(DownloadJob.Status.CANCELLED);
+                    job.message("已取消");
+                    notifyCancelled(job.projectTitle);
+                    throw new RuntimeException(t);
+                }
                 job.status(DownloadJob.Status.FAILED);
                 job.message(String.valueOf(t));
                 notifyFailed(job.projectTitle, String.valueOf(t));
@@ -207,14 +283,16 @@ public class DownloadManager {
     /** 按来源下载单个文件。 */
     public Path downloadFile(ContentSource source, VersionFile file, Path target, ProgressListener listener)
             throws SourceException {
+        return downloadFile(source, file, target, listener, com.packhub.http.CancelToken.NONE);
+    }
+
+    /** 按来源下载单个文件，支持取消。 */
+    public Path downloadFile(ContentSource source, VersionFile file, Path target, ProgressListener listener,
+                             com.packhub.http.CancelToken token) throws SourceException {
         if (source == ContentSource.CURSEFORGE) {
-            return curseForge.download(file, target, listener);
+            return curseForge.download(file, target, listener, token);
         }
-        try {
-            return modrinth.download(file, target, listener);
-        } catch (SourceException e) {
-            throw e;
-        }
+        return modrinth.download(file, target, listener, token);
     }
 
     /** 只下载文件、不触发热加载（供插件安装等场景复用）。 */
@@ -236,8 +314,9 @@ public class DownloadManager {
         }
     }
 
-    /** 递归安装必选前置（两个来源各自解析）。 */
-    private void resolveDependencies(ProjectVersion version, ContentType type, int depth) {
+    /** 递归安装必选前置（两个来源各自解析）；同一个取消令牌贯穿到底。 */
+    private void resolveDependencies(ProjectVersion version, ContentType type, int depth,
+                                     com.packhub.http.CancelToken token) {
         if (version == null || depth >= config.maxDependencyDepth) {
             return;
         }
@@ -278,10 +357,11 @@ public class DownloadManager {
                 DownloadJob job = new DownloadJob(project.title + "（前置）", file.filename, type, file.size);
                 jobs.put(job.id, job);
                 job.status(DownloadJob.Status.DOWNLOADING);
-                downloadFile(source, file, target, job::progress);
+                downloadFile(source, file, target, job::progress, token);
                 job.status(DownloadJob.Status.DONE);
                 job.result(target);
-                resolveDependencies(candidate, type, depth + 1);
+                registry.record(new InstallResult(project, candidate, file, type, target, false, false, "前置已安装"));
+                resolveDependencies(candidate, type, depth + 1, token);
             } catch (Throwable t) {
                 Log.warn("[PackHub] 处理前置 %s 失败: %s", dependency.projectId, t.toString());
             }
@@ -303,6 +383,13 @@ public class DownloadManager {
         Listener current = listener;
         if (current != null) {
             withClient(() -> current.onFailed(title, error));
+        }
+    }
+
+    private void notifyCancelled(String title) {
+        Listener current = listener;
+        if (current != null) {
+            withClient(() -> current.onCancelled(title));
         }
     }
 
