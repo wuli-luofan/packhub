@@ -37,6 +37,34 @@
 > 且两个模块的 `processResources` 都显式设置了 `filteringCharset = 'UTF-8'`，
 > 避免在默认编码非 UTF-8 的机器上写坏中文。
 
+## 0.55 第二轮：安装进度 / 取消 / 联机同步 / 中文搜索 / UI 自适应
+
+在第一版（每次都全绿）之上追加的功能，逐个都经过 CI 真编译验证：
+
+| 功能 | 状态 | 说明 |
+| --- | --- | --- |
+| 版本号 1.0.2 | ✅ | `gradle.properties` 的 `mod_version` 与 `PackHub.VERSION`，产物名随之变化 |
+| 安装进度界面 + 取消 | ✅ CI 编译通过 | 总进度条 + 每文件进度条；「点一行取消单个」「取消全部」；取消会删掉半截 `.part` 且不重试 |
+| 安装完成通知 | ✅ | `安装完成 · <项目> <版本> → mods/xxx.jar（需重启生效 / 已热加载）`；并写入安装记录 |
+| 安装记录 `InstallRegistry` | ✅ 单测通过 | 落盘 `config/packhub/install-registry.json`，同时是联机同步的清单来源 |
+| 联机同步（房主下发 → 玩家自动下载 → 房主重启） | ✅ CI 编译通过 | 纯逻辑层 5 项单测（清单/消息编解码、跳过已存在、失败隔离、取消）；Fabric 侧已确认 API（`serverboundPlay()/clientboundPlay()`）；NeoForge 发包用候选方法名 |
+| 中文搜索 | ✅ 单测通过 | 内置约 200 条 MC 术语词表，`光影优化 → shader optimization`（保序），多查询去重合并 |
+| UI 自适应 | ✅ CI 编译通过 | `ButtonBar` 自动换行；各界面内容区按按钮栏高度收缩；长文本截断/折行 |
+
+期间 CI 抓到并修掉的问题（都由真实编译报错定位，不是猜的）：
+
+1. `PayloadTypeRegistry.playC2S()/playS2C()` 在 26.3 的 Fabric API 里**不存在**，
+   正确名字是 `serverboundPlay()` / `clientboundPlay()`（CI 的 `javap` 探测步骤给出）；
+2. `ServerPlayer.server` 是私有字段，不能直接读，改用 `Minecraft.getSingleplayerServer()`；
+3. NeoForge 的 `PacketDistributor.sendToServer(Payload)` 在该版本不存在 → 改为按候选类名/方法名反射调用；
+4. `:smoke` 源集要显式 `include` 新增的纯逻辑类（`NetworkBridge` / `search/**` / `sync/**`），
+   否则编译期就找不到符号；
+5. 中文词表最初用「遍历字典替换」导致语序被打乱（`optimization shader`），
+   改成从左到右最长匹配后恢复原语序。
+
+离线测试数量变化：逻辑测试 **16 → 23 → 30 项**（新增安装记录 2 项、联机同步 5 项、中文搜索 7 项），
+Mock 服务器测试保持 **13 项**。
+
 ## 0.6 为通过 26.3 编译所做的 API 迁移
 
 26.1 起 Minecraft 不再混淆，26.3 又换掉了 GLFW 与整套 GUI 渲染类。完整的差异表在

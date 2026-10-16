@@ -113,6 +113,10 @@ jobs:
         continue-on-error: true
         run: gradle :neoforge:build --no-daemon -Ppackhub.repos=official
 
+      - name: 探测 NeoForge 网络 API（联机同步发包方法名）
+        continue-on-error: true
+        run: gradle :neoforge:printNetworkApi --no-daemon -Ppackhub.repos=official
+
       - name: 真实 API 冒烟测试（Modrinth 搜索/版本/下载）
         continue-on-error: true
         run: gradle :smoke:run --no-daemon -Ppackhub.repos=official -Ppackhub.neoforge=false

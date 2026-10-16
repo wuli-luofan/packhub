@@ -38,3 +38,38 @@ processResources {
         expand "version": project.version
     }
 }
+
+// 打印真实网络 API 签名（联机同步用）：CI 里跑一次就能确认发包方法名，
+// 免得只靠猜测——本地跑不了 Gradle 时这是唯一的确认手段。
+tasks.register('printNetworkApi') {
+    description = 'javap 出 NeoForge 网络类签名，用于确认联机同步用到的 API'
+    group = 'verification'
+    doLast {
+        def candidates = [
+                'net.neoforged.neoforge.network.PacketDistributor',
+                'net.neoforged.neoforge.client.network.ClientPacketDistributor',
+                'net.neoforged.neoforge.server.network.ServerPacketDistributor',
+                'net.neoforged.neoforge.network.registration.PayloadRegistrar',
+        ]
+        def classpath = sourceSets.main.compileClasspath
+        candidates.each { name ->
+            println "########## ${name}"
+            def found = classpath.find { entry ->
+                entry.name.endsWith('.jar') && new java.util.zip.ZipFile(entry).withCloseable { zip ->
+                    zip.getEntry(name.replace('.', '/') + '.class') != null
+                }
+            }
+            if (found == null) {
+                println '(未在 classpath 中找到该类)'
+                return
+            }
+            def out = new ByteArrayOutputStream()
+            exec {
+                commandLine 'javap', '-classpath', found.absolutePath, name
+                standardOutput = out
+                ignoreExitValue = true
+            }
+            println out.toString('UTF-8').readLines().take(80).join('\n')
+        }
+    }
+}
