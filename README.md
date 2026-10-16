@@ -128,8 +128,11 @@ fabric/build/libs/packhub-fabric-1.0.0.jar
 neoforge/build/libs/packhub-neoforge-1.0.0.jar
 ```
 
-> 本机（这台 Windows 开发机）**没能跑完 `gradlew build`**：网络对大文件传输会中途掐断，
-> 拉不到 `fabric-loom` / `fabric-api` / NeoForge 的构建依赖。详情与替代方案见第七节「验证记录」。
+> **两个 jar 已经构建好了**：<https://github.com/wuli-luofan/packhub/actions> 里最新一次运行
+> （runs/38840490248，结论 `success`）的 **Artifacts → packhub-jars** 可以下载到
+> `packhub-fabric-1.0.0.jar` 与 `packhub-neoforge-1.0.0.jar`。
+> 本机没法跑 `gradlew build` 只是因为出口网络会掐断 maven.fabricmc.net 的大文件（第七节有实测数据），
+> 在能访问该仓库的机器上 `gradlew build` 是正常的。
 
 国内网络说明：
 - 构建脚本已在 `settings.gradle` / `build.gradle` 里配置了 **BMCLAPI、腾讯云、阿里云** 镜像；官方仓库只作兜底。
@@ -195,35 +198,41 @@ PackHub 定义了一种“不会触碰 Mixin、因此可以真正热加载”的
    （带 `versions:26.3` + `categories:<loader>` 过滤）、版本查询、真实下载 `FreshAnimations_v1.10.5.zip`
    （645,816 字节）并通过 sha1 校验。完整记录见 [`docs/verification.md`](docs/verification.md)。
 
-4. **全量源码按 Java 25 编译：0 错误**。由于本机拉不到 Minecraft 工具链（见下），
-   我写了一套 Minecraft / Fabric / NeoForge 的**桩类**（`tools/api-stubs`，仅用于本地校验），
-   把 `common + fabric + neoforge` 全部源文件编译通过（104 个源文件 → 135 个 class），
-   确认**工程内部一致性没有错误**：没有漏 import、没有调用不存在的自有方法、没有类型错误。
+4. **全量源码按 Java 25 编译：0 错误**（本地用桩类做的一致性检查）。
 
-### 未验证（环境限制，非代码问题）
+### ✅ 两个 jar 已由 CI 真实构建成功
 
-**本机无法完成 `gradlew build`**，原因是这台机器的网络对 maven.fabricmc.net / maven.neoforged.net 的
-**大文件传输会被中途掐断**（实测：1.5 MB 的 `fabric-loom-1.19.1.jar` 传到 111 KB 后停滞并超时；
-`fabric-loader`、`fabric-api` 同样失败；换 Node 的 TLS 栈重试也一样 → 链路问题，不是客户端问题。
-第二轮复测时连 `api.modrinth.com` 也开始连接超时，进一步说明是本机出口网络的问题）。
-而国内镜像站**没有** `fabric-loom` 与 `fabric-api`（BMCLAPI 只有 fabric-loader 与 NeoForge 的 metadata）。
+本机因为网络拿不到 Minecraft 工具链（见下），所以改用 GitHub Actions 构建：
 
-因此以下内容需要你在**网络正常的机器或 CI** 上验证：
+**运行记录**：<https://github.com/wuli-luofan/packhub/actions/runs/38840490248> —— `conclusion: success`，
+产物 `packhub-jars`（499 KB）内容：
 
-- `gradlew build` 产出 `packhub-fabric-1.0.0.jar` / `packhub-neoforge-1.0.0.jar`；
-- 游戏内 UI 的实际显示与交互；
+| 文件 | 大小 | 校验过的内容 |
+| --- | --- | --- |
+| `packhub-fabric-1.0.0.jar` | 184,403 字节 | 88 个条目；含 `fabric.mod.json`（入口 `com.packhub.fabric.PackHubFabric`，`minecraft ~26.3`，`java >=25`）、`com/packhub/**`、图标、中英语言文件 |
+| `packhub-neoforge-1.0.0.jar` | 182,643 字节 | 88 个条目；含 `META-INF/neoforge.mods.toml`（入口 `com.packhub.neoforge.PackHubNeoForge`，`neoforge >=26.3`）、`com/packhub/**`、图标、中英语言文件 |
+| 两个 `-sources.jar` | 约 90 KB | 源码 jar |
+
+同时 CI 里 **离线逻辑测试 16/16、Mock 服务器测试 13/13 也都是 passed**（每个 Gradle 步骤的结论都是 success）。
+
+产物下载：仓库 → Actions → 对应运行 → 页面底部 **Artifacts → packhub-jars**。
+
+### 仍未验证：只能进游戏才能确认的部分
+
+- 游戏内 UI 的实际显示与交互手感（没有 26.3 的可运行客户端与账号，无法实机测试）；
 - 软重启在具体启动器（官方启动器 / HMCL / PCL）下的行为——命令形态不同，所以界面上专门放了「复制重启命令」；
 - Iris / Oculus 反射重载入口在 26.3 上的真实方法名（找不到只会记日志，不影响你手动在 Iris 里选光影）；
-- 26.3 上少数接口若发生改名（例如 `KeyMapping.Category`、`Options.resourcePacks`），已在代码里用反射兜底，但首次编译仍可能需要按报错微调。
+- CurseForge 需要你自己的 API Key 才能真正拉到数据（代码链路已用本地 mock 服务器验证）。
 
-**最快的拿到 jar 的方式**：把这个仓库推到 GitHub，`.github/workflows/build.yml` 会在 GitHub 的
-运行器上装 JDK 25 + Gradle 9.8.1，跑 `gradle build` 与验证任务，并把两个 jar 作为 artifact 上传。
-GitHub 运行器访问 maven.fabricmc.net 没有上述限制。
+### 本机构建不了的原因（不影响你拿 jar）
 
-### 本机限制的复现命令
+这台机器对 `maven.fabricmc.net` / `maven.neoforged.net` 的**大文件传输会被中途掐断**
+（实测：1.5 MB 的 `fabric-loom-1.19.1.jar` 传到 111 KB 后停滞并超时；`fabric-loader`、`fabric-api` 同样失败；
+换 Node 的 TLS 栈重试也一样 → 链路问题，不是客户端问题），而国内镜像站没有 `fabric-loom` 与 `fabric-api`。
+GitHub 运行器没有这个限制，所以构建放在 CI 做。
 
 ```powershell
-# 全量桩编译（0 错误）—— 脚本与桩类都在 tools/ 里
+# 本机自检（桩类只对应旧 API，仅能证明工程内部一致性；真正的编译以 CI 为准）
 powershell -ExecutionPolicy Bypass -File .\tools\verify-offline.ps1 `
     -Jdk25 "$env:APPDATA\.minecraft\runtime\java-runtime-epsilon"
 
@@ -233,6 +242,14 @@ java .\tools\network\RangeProbe.java https://maven.fabricmc.net/net/fabricmc/fab
 
 排查顺序建议：`config/packhub.json` 的 API 地址是否可达 → 日志里 `[PackHub]` 前缀的输出 →
 「热加载」页的 `复制重启命令`。
+
+### 26.3 的 API 迁移（踩过的坑都在这里）
+
+26.1 起 Minecraft **不再混淆**，因此工程里**没有 `mappings`**（留着会直接构建失败）。
+其余差异（`GuiGraphics` → `GuiGraphicsExtractor`、`render` → `extractRenderState`、
+`drawString` → `text`、SDL 取代 GLFW、`MouseButtonEvent`/`KeyEvent`、`net.minecraft.Util` 被删除、
+Fabric API 的 `KeyMappingHelper`/`ClientCommands` 改名等）整理在
+[`docs/minecraft-26.3-api-notes.md`](docs/minecraft-26.3-api-notes.md)。
 
 ## 八、把工程推到 GitHub（拿 jar 的关键一步）
 

@@ -4,7 +4,7 @@
 
 ## api-stubs —— 离线内部一致性检查
 
-`api-stubs/` 里是为 PackHub 用到的那部分 Minecraft / Fabric / NeoForge API 手写的**桩类**。
+`api-stubs/` 里是为 PackHub 用到的那部分 Minecraft / Fabric / NeoForge API 手写的**桩类**（已同步到 26.3 的形状：`GuiGraphicsExtractor` / `extractRenderState` / `MouseButtonEvent` / `KeyEvent` / `KeyMappingHelper` / `ClientCommands`）。
 在没有网络、拉不到 Minecraft 工具链的机器上，可以用它把整个工程编译一遍，
 确认**工程自身的代码没有错误**（漏 import、调用不存在的自有方法、泛型/重载错误等）。
 
@@ -20,9 +20,9 @@ powershell -ExecutionPolicy Bypass -File .\tools\verify-offline.ps1 `
 脚本会输出编译诊断条数，期望是 `0`。本机实测结果：
 
 ```
-Compiling 98 source files (JDK 25 + API stubs)...
+Compiling 107 source files (JDK 25 + API stubs)...
 Diagnostics: 0  (expected 0)
-PASS: 127 class files produced.
+PASS: 139 class files produced.
 ```
 
 > ⚠️ **这些桩类的签名是我根据 1.21.x 的 API 手写的，不代表 Minecraft 26.3 的真实签名。**

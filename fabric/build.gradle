@@ -34,6 +34,8 @@ dependencies {
 
 processResources {
     inputs.property "version", project.version
+    // 显式指定 UTF-8，避免在默认编码非 UTF-8 的机器（中文 Windows）上把中文描述写坏
+    filteringCharset = 'UTF-8'
     filesMatching("fabric.mod.json") {
         expand "version": project.version
     }

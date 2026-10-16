@@ -16,6 +16,46 @@
 | NeoForge | **26.3.0.77**（release） | neoforge maven-metadata.xml（经 BMCLAPI 镜像获取） |
 | CurseForge API | `https://api.curseforge.com/v1`，`x-api-key` 鉴权，Minecraft `gameId=432` | [CurseForge 官方文档](https://docs.curseforge.com/rest-api/) |
 
+## 0.5 最终结果：两个 jar 已由 CI 真实构建成功
+
+本机网络拿不到 Minecraft 工具链（第 5 节），所以构建放在 GitHub Actions 里做。
+
+**运行记录**：<https://github.com/wuli-luofan/packhub/actions/runs/38840490248> —— `conclusion: success`
+
+| 产物 | 大小 | 校验内容 |
+| --- | --- | --- |
+| `packhub-fabric-1.0.0.jar` | 184,403 字节 | 88 个条目；`fabric.mod.json`（`id=packhub`、`version=1.0.0`、入口 `com.packhub.fabric.PackHubFabric`、`minecraft ~26.3`、`java >=25`、`environment=client`）；`com/packhub/**`；`assets/packhub/icon.png`；中英 `lang` |
+| `packhub-neoforge-1.0.0.jar` | 182,643 字节 | 88 个条目；`META-INF/neoforge.mods.toml`（`modId=packhub`、入口 `com.packhub.neoforge.PackHubNeoForge`、`neoforge >=26.3`、`minecraft [26.3,26.4)`）；`com/packhub/**`；图标；中英 `lang` |
+| `packhub-fabric-1.0.0-sources.jar` | 89,900 字节 | 源码 jar |
+| `packhub-neoforge-1.0.0-sources.jar` | 90,000 字节 | 源码 jar |
+
+除此之外，该次运行里每个步骤都是 success：API 签名探测、**离线逻辑测试 16/16**、
+**Mock 服务器测试 13/13**、**构建 Fabric jar**、构建 NeoForge jar、真实 Modrinth 冒烟测试。
+
+> 顺带一提：元数据里的中文描述已按 UTF-8 校验通过（`fabric.mod.json` 内
+> `"description": "游戏内下载资源包 / 材质包 / 光影包 / 模组，并支持热加载…"`），
+> 且两个模块的 `processResources` 都显式设置了 `filteringCharset = 'UTF-8'`，
+> 避免在默认编码非 UTF-8 的机器上写坏中文。
+
+## 0.6 为通过 26.3 编译所做的 API 迁移
+
+26.1 起 Minecraft 不再混淆，26.3 又换掉了 GLFW 与整套 GUI 渲染类。完整的差异表在
+[`minecraft-26.3-api-notes.md`](minecraft-26.3-api-notes.md)，要点：
+
+- **删掉 `mappings`**：26.3 的版本 JSON 里没有 `client_mappings`，留 `loom.officialMojangMappings()`
+  会直接报 `Failed to find official mojang mappings for 26.3`；依赖也从 `modImplementation` 换成 `implementation`。
+- `GuiGraphics` → **`GuiGraphicsExtractor`**；`Screen#render(...)` → **`extractRenderState(...)`**；
+  `drawString(...)` → **`text(...)`**；文本颜色必须 ARGB；`Minecraft#setScreen` → **`minecraft.gui.setScreen`**。
+- `mouseClicked(double,double,int)` → **`mouseClicked(MouseButtonEvent, boolean)`**；
+  `keyPressed(int,int,int)` → **`keyPressed(KeyEvent)`**。
+- `net.minecraft.Util` **已被删除**（打开目录/链接改为反射多候选 + `Desktop` + 系统命令三层兜底）。
+- `InputConstants.Type.KEYSYM` 不存在了 → `KeyMapping` 的构造改成**全反射**（按构造函数形状匹配 + 动态挑枚举常量）。
+- Fabric API：`KeyBindingHelper` → **`KeyMappingHelper`**（包 `...client.keymapping.v1`）；
+  `ClientCommandManager` → **`ClientCommands`**。
+
+这些改动不是一次性猜出来的，而是**靠 CI 的编译错误 + 一个专门打印真实签名的探测步骤**逐轮收敛的
+（共 3 轮：24 个错误 → 0 个错误）。
+
 ## 1. 离线逻辑测试：**16/16 通过**
 
 命令：`gradlew :smoke:logic`（等价的直接运行方式见第 6 节）

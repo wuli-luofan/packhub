@@ -32,6 +32,8 @@ neoForge {
 
 processResources {
     inputs.property "version", project.version
+    // 显式指定 UTF-8，避免在默认编码非 UTF-8 的机器上把中文描述写坏
+    filteringCharset = 'UTF-8'
     filesMatching("META-INF/neoforge.mods.toml") {
         expand "version": project.version
     }
