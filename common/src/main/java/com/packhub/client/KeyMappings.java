@@ -22,6 +22,16 @@ public final class KeyMappings {
     private KeyMappings() {
     }
 
+    /**
+     * 打开界面的默认键位。
+     * <p>注意：Minecraft 26.3 用 SDL 取代了 GLFW，{@code org.lwjgl.glfw.GLFW} 已经不在类路径上，
+     * 所以键值必须取自原版 {@link InputConstants}（它的常量名与数值在 26.3 也有调整，
+     * 不要硬编码数字）。</p>
+     */
+    public static int defaultOpenKey() {
+        return InputConstants.KEY_P;
+    }
+
     /** 建一个开界面用的键位（失败返回 null，功能会退化成只用 /packhub 命令）。 */
     public static KeyMapping createOpenHubMapping(int defaultKeyCode) {
         KeyMapping mapping = tryCreateWithCategoryObject(defaultKeyCode);

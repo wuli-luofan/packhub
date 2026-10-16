@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version "${loom_version}"
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
 }
 
 base {
@@ -14,12 +14,22 @@ sourceSets {
     }
 }
 
-dependencies {
-    minecraft "com.mojang:minecraft:${minecraft_version}"
-    mappings loom.officialMojangMappings()
+loom {
+    mods {
+        packhub {
+            sourceSet sourceSets.main
+        }
+    }
+}
 
-    modImplementation "net.fabricmc:fabric-loader:${loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
+dependencies {
+    // Minecraft 26.x 起游戏本体不再混淆，因此**不需要任何 mappings**：
+    // 26.1+ 没有 client_mappings，Yarn 也已在 2025 年停止维护。
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+
+    // 无混淆后 Loom 不再重映射依赖，官方模板用的就是 implementation
+    implementation "net.fabricmc:fabric-loader:${loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
 }
 
 processResources {
@@ -29,18 +39,12 @@ processResources {
     }
 }
 
+tasks.withType(JavaCompile).configureEach {
+    options.release = 25
+}
+
 jar {
     from(rootProject.file('LICENSE')) {
         rename { "${it}_${project.base.archivesName.get()}" }
-    }
-}
-
-loom {
-    runs {
-        client {
-            client()
-            ideConfigGenerated true
-            name = "PackHub Client"
-        }
     }
 }

@@ -16,14 +16,13 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
-import org.lwjgl.glfw.GLFW;
 
 /** NeoForge 客户端入口。 */
 @Mod(value = PackHub.MOD_ID, dist = Dist.CLIENT)
 public final class PackHubNeoForge {
 
     /** 键位构造走反射兼容层，失败时退化成只用 /packhub 命令。 */
-    public static final KeyMapping OPEN_HUB = KeyMappings.createOpenHubMapping(GLFW.GLFW_KEY_P);
+    public static final KeyMapping OPEN_HUB = KeyMappings.createOpenHubMapping(KeyMappings.defaultOpenKey());
 
     public PackHubNeoForge(IEventBus modEventBus, ModContainer container) {
         LogBridge.install();
