@@ -19,10 +19,8 @@ import java.util.List;
 public class InstallProgressScreen extends Screen {
 
     private final Screen parent;
-    private Button cancelAllButton;
-    private Button openFolderButton;
-    private Button restartButton;
-    private Button closeButton;
+    private ButtonBar barRef;
+    private int barHeight = 26;
     private long lastActiveAt;
 
     public InstallProgressScreen(Screen parent) {
@@ -33,26 +31,21 @@ public class InstallProgressScreen extends Screen {
     @Override
     protected void init() {
         lastActiveAt = System.currentTimeMillis();
-        cancelAllButton = addRenderableWidget(Button.builder(Component.literal("取消全部安装"), button -> {
-            int cancelled = PackHub.downloads().cancelAll();
-            if (PackHub.config().showInstallSummary) {
-                Toasts.show("PackHub", cancelled > 0 ? "已请求取消 " + cancelled + " 个任务" : "当前没有进行中的任务");
-            }
-        }).bounds(10, height - 28, 120, 20).build());
-
-        openFolderButton = addRenderableWidget(Button.builder(Component.literal("打开 mods 目录"), button ->
-                ScreenUtil.openFolder(PackHub.platform().modsDir()))
-                .bounds(136, height - 28, 120, 20).build());
-
-        restartButton = addRenderableWidget(Button.builder(Component.literal("软重启并载入"), button ->
-                PackHub.hotLoad().softRestart())
-                .bounds(262, height - 28, 120, 20).build());
-
-        addRenderableWidget(Button.builder(Component.literal("后台运行"), button -> onClose())
-                .bounds(width - 200, height - 28, 90, 20).build());
-
-        closeButton = addRenderableWidget(Button.builder(Component.literal("完成"), button -> onClose())
-                .bounds(width - 104, height - 28, 94, 20).build());
+        ButtonBar bar = new ButtonBar()
+                .add("取消全部安装", 110, () -> !PackHub.downloads().allFinished(), () -> {
+                    int cancelled = PackHub.downloads().cancelAll();
+                    if (PackHub.config().showInstallSummary) {
+                        Toasts.show("PackHub", cancelled > 0 ? "已请求取消 " + cancelled + " 个任务" : "当前没有进行中的任务");
+                    }
+                })
+                .add("打开 mods 目录", 110, () -> ScreenUtil.openFolder(PackHub.platform().modsDir()))
+                .add("软重启并载入", 110, () -> !PackHub.downloads().busy() && PackHub.hotLoad().pendingRestart().size() > 0,
+                        () -> PackHub.hotLoad().softRestart())
+                .add("后台运行", 84, this::onClose)
+                .add("完成", 64, this::onClose)
+                .rightAligned();
+        barHeight = bar.build(width, height, 6, this::addRenderableWidget);
+        barRef = bar;
     }
 
     @Override
@@ -81,7 +74,7 @@ public class InstallProgressScreen extends Screen {
 
         int rowY = 56;
         int rowHeight = 26;
-        int maxRows = Math.max(1, (height - 90) / rowHeight);
+        int maxRows = Math.max(1, (height - 56 - barHeight - 40) / rowHeight);
         List<DownloadJob> shown = new ArrayList<>();
         for (DownloadJob job : jobs) {
             if (!job.finished() || shown.size() < maxRows) {
@@ -124,18 +117,20 @@ public class InstallProgressScreen extends Screen {
             long failed = jobs.stream().filter(j -> j.status() == DownloadJob.Status.FAILED).count();
             long cancelled = jobs.stream().filter(j -> j.status() == DownloadJob.Status.CANCELLED).count();
             String summary = "完成 " + done + " · 失败 " + failed + " · 已取消 " + cancelled;
-            graphics.text(font, summary, 10, height - 44, UiKit.COLOR_TEXT, false);
+            UiKit.drawTrimmed(graphics, summary, 10, height - barHeight - 30, width - 20, UiKit.COLOR_TEXT);
             if (PackHub.hotLoad().pendingRestart().size() > 0) {
-                graphics.text(font, "有 " + PackHub.hotLoad().pendingRestart().size()
-                        + " 个模组需要重启才生效：点右下角「软重启并载入」", 10, height - 56, UiKit.COLOR_WARN, false);
+                UiKit.drawTrimmed(graphics, "有 " + PackHub.hotLoad().pendingRestart().size()
+                        + " 个模组需要重启才生效：点下方的「软重启并载入」",
+                        10, height - barHeight - 42, width - 20, UiKit.COLOR_WARN);
             }
         } else {
-            graphics.text(font, "§7提示：点击某一行可以只取消那一个任务", 10, height - 44, UiKit.COLOR_DIM, false);
+            UiKit.drawTrimmed(graphics, "§7提示：点击某一行可以只取消那一个任务",
+                    10, height - barHeight - 30, width - 20, UiKit.COLOR_DIM);
         }
 
-        cancelAllButton.active = busy;
-        restartButton.active = !busy && PackHub.hotLoad().pendingRestart().size() > 0;
-        closeButton.setMessage(Component.literal(busy ? "后台运行" : "完成"));
+        if (barRef != null) {
+            barRef.refresh();
+        }
     }
 
     @Override

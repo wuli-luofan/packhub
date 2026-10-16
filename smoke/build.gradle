@@ -20,6 +20,7 @@ sourceSets {
             include 'com/packhub/util/Log.java'
             include 'com/packhub/util/Hashes.java'
             include 'com/packhub/platform/Platform.java'
+            include 'com/packhub/platform/NetworkBridge.java'
             include 'com/packhub/installed/**'
             include 'com/packhub/sync/SyncEntry.java'
             include 'com/packhub/sync/SyncManifest.java'

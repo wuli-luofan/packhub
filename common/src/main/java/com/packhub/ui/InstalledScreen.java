@@ -57,26 +57,27 @@ public class InstalledScreen extends Screen {
 
     @Override
     protected void init() {
-        rows.bounds(10, 50, width - 20, Math.max(40, height - 56 - 30));
+        int contentTop = 50;
 
         categoryButton = addRenderableWidget(Button.builder(categoryLabel(), button -> {
             Category[] values = Category.values();
             category = values[(category.ordinal() + 1) % values.length];
             button.setMessage(categoryLabel());
             refresh();
-        }).bounds(10, height - 26, 120, 20).build());
+        }).bounds(10, contentTop - 24, 120, 20).build());
 
-        addRenderableWidget(Button.builder(Component.literal("打开目录"), button -> openFolder())
-                .bounds(136, height - 26, 84, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("重载资源"), button -> {
-            PackHub.hotLoad().reloadNow();
-            status = "已触发资源重载";
-        }).bounds(226, height - 26, 84, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("刷新"), button -> refresh())
-                .bounds(width - 150, height - 26, 60, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("返回"), button -> onClose())
-                .bounds(width - 84, height - 26, 74, 20).build());
+        int barHeight = new ButtonBar()
+                .add("打开目录", 84, this::openFolder)
+                .add("重载资源", 84, () -> {
+                    PackHub.hotLoad().reloadNow();
+                    status = "已触发资源重载";
+                })
+                .add("刷新", 60, this::refresh)
+                .add("返回", 74, this::onClose)
+                .rightAligned()
+                .build(width, height, 6, this::addRenderableWidget);
 
+        rows.bounds(10, contentTop, width - 20, Math.max(30, height - 10 - barHeight - contentTop));
         refresh();
     }
 
@@ -226,7 +227,7 @@ public class InstalledScreen extends Screen {
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
         UiKit.header(graphics, Component.literal("PackHub · 已安装内容管理"), width);
-        graphics.text(font, "§7" + status, 12, 38, 0xFFFFFFFF, false);
+        UiKit.drawTrimmed(graphics, "§7" + status, 12, 38, width - 140, 0xFFFFFFFF);
         rows.render(graphics, mouseX, mouseY);
     }
 

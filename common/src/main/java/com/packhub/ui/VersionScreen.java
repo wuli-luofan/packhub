@@ -29,6 +29,7 @@ public class VersionScreen extends Screen {
     private Button enableButton;
     private Button dependencyButton;
     private Button installButton;
+    private ButtonBar bar;
 
     public VersionScreen(Screen parent, ProjectSummary project, ContentType type) {
         super(Component.literal("PackHub 版本选择"));
@@ -40,29 +41,33 @@ public class VersionScreen extends Screen {
     @Override
     protected void init() {
         int listTop = 50;
-        int listBottom = height - 56;
-        versions.bounds(10, listTop, width - 20, Math.max(40, listBottom - listTop));
 
+        // 底部按钮栏（窄屏自动换行）
+        bar = new ButtonBar()
+                .add("安装选中版本", 110, () -> versions.selected() != null && !loading, this::installSelected)
+                .add("打开项目页", 100, () -> ScreenUtil.openUrl(projectPageUrl()))
+                .add("返回", 74, this::onClose)
+                .rightAligned();
+        int barHeight = bar.build(width, height, 6, this::addRenderableWidget);
+
+        // 两个开关放在按钮栏上方一行，宽度按屏幕自适应
+        int toggleWidth = Math.max(70, Math.min(150, (width - 30) / 2));
+        int toggleY = height - 10 - barHeight - 26;
         enableButton = addRenderableWidget(Button.builder(enableLabel(), button -> {
             autoEnable = !autoEnable;
             button.setMessage(enableLabel());
-        }).bounds(10, height - 50, 150, 20).build());
+        }).bounds(10, toggleY, toggleWidth, 20).build());
 
         dependencyButton = addRenderableWidget(Button.builder(dependencyLabel(), button -> {
             PackHub.config().autoResolveDependencies = !PackHub.config().autoResolveDependencies;
             PackHub.config().save();
             button.setMessage(dependencyLabel());
-        }).bounds(166, height - 50, 150, 20).build());
+        }).bounds(14 + toggleWidth, toggleY, toggleWidth, 20).build());
 
-        installButton = addRenderableWidget(Button.builder(Component.literal("安装选中版本"), button -> installSelected())
-                .bounds(width - 220, height - 50, 110, 20).build());
+        installButton = null;
 
-        addRenderableWidget(Button.builder(Component.literal("返回"), button -> onClose())
-                .bounds(width - 104, height - 50, 94, 20).build());
-
-        addRenderableWidget(Button.builder(Component.literal("打开项目页"), button ->
-                ScreenUtil.openUrl(projectPageUrl()))
-                .bounds(10, height - 26, 110, 20).build());
+        int contentBottom = toggleY - 6;
+        versions.bounds(10, listTop, width - 20, Math.max(30, contentBottom - listTop));
 
         versions.selected(null);
         load();
@@ -158,12 +163,14 @@ public class VersionScreen extends Screen {
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
         UiKit.header(graphics, Component.literal("PackHub · " + project.title + "  [" + project.source.displayName() + "]"), width);
-        graphics.text(font, "§7" + status, 12, 38, 0xFFFFFFFF, false);
+        UiKit.drawTrimmed(graphics, "§7" + status, 12, 38, width - 24, 0xFFFFFFFF);
         if (loading) {
             graphics.text(font, "§e加载中…", 12, 26, 0xFFFFFFFF, false);
         }
         versions.render(graphics, mouseX, mouseY);
-        installButton.active = versions.selected() != null && !loading;
+        if (bar != null) {
+            bar.refresh();
+        }
     }
 
     @Override

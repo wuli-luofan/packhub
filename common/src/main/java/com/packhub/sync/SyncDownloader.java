@@ -22,7 +22,8 @@ public final class SyncDownloader {
 
     /** 实际下载一个文件的方式（由 DownloadManager 提供）。 */
     public interface Fetcher {
-        Path fetch(SyncEntry entry, Path target, ProgressListener listener, CancelToken token) throws SourceException;
+        Path fetch(SyncEntry entry, Path target, ProgressListener listener, CancelToken token)
+                throws java.io.IOException, SourceException;
     }
 
     /** 一次同步的执行结果。 */

@@ -19,9 +19,8 @@ import java.util.List;
 public class SyncScreen extends Screen {
 
     private final Screen parent;
-    private Button broadcastButton;
-    private Button restartButton;
-    private Button cancelButton;
+    private ButtonBar barRef;
+    private int barHeight = 26;
 
     public SyncScreen(Screen parent) {
         super(Component.literal("PackHub 联机同步"));
@@ -30,30 +29,24 @@ public class SyncScreen extends Screen {
 
     @Override
     protected void init() {
-        broadcastButton = addRenderableWidget(Button.builder(Component.literal("把模组同步给玩家"), button -> {
-            int count = PackHub.sync().broadcast();
-            Toasts.show("PackHub", count > 0 ? "已广播 " + count + " 个文件" : "没有可同步的模组（先用 PackHub 装几个）");
-        }).bounds(10, height - 28, 150, 20).build());
-
-        restartButton = addRenderableWidget(Button.builder(Component.literal("全部就绪，重启载入"), button -> {
-            if (!PackHub.sync().allClientsReady()) {
-                Toasts.show("PackHub", "还有玩家没装好，先等等");
-                return;
-            }
-            PackHub.sync().restartEveryone();
-        }).bounds(166, height - 28, 150, 20).build());
-
-        cancelButton = addRenderableWidget(Button.builder(Component.literal("取消同步"), button -> {
-            PackHub.sync().cancelBroadcast();
-            Toasts.show("PackHub", "已取消本次同步");
-        }).bounds(322, height - 28, 100, 20).build());
-
-        addRenderableWidget(Button.builder(Component.literal("打开 mods"), button ->
-                ScreenUtil.openFolder(PackHub.platform().modsDir()))
-                .bounds(428, height - 28, 100, 20).build());
-
-        addRenderableWidget(Button.builder(Component.literal("返回"), button -> onClose())
-                .bounds(width - 84, height - 28, 74, 20).build());
+        ButtonBar bar = new ButtonBar()
+                .add("把模组同步给玩家", 130, () -> PackHub.platform().network().isHost(), () -> {
+                    int count = PackHub.sync().broadcast();
+                    Toasts.show("PackHub", count > 0
+                            ? "已广播 " + count + " 个文件"
+                            : "没有可同步的模组（先用 PackHub 装几个）");
+                })
+                .add("全部就绪，重启载入", 140, () -> PackHub.sync().allClientsReady(),
+                        () -> PackHub.sync().restartEveryone())
+                .add("取消同步", 90, () -> PackHub.sync().hostActive(), () -> {
+                    PackHub.sync().cancelBroadcast();
+                    Toasts.show("PackHub", "已取消本次同步");
+                })
+                .add("打开 mods", 90, () -> ScreenUtil.openFolder(PackHub.platform().modsDir()))
+                .add("返回", 58, this::onClose)
+                .rightAligned();
+        barHeight = bar.build(width, height, 6, this::addRenderableWidget);
+        barRef = bar;
     }
 
     @Override
@@ -74,9 +67,15 @@ public class SyncScreen extends Screen {
                         10, 60, 0xFFFFFFFF, false);
             }
             int y = 60;
+            int maxRows = Math.max(1, (height - barHeight - 60 - 30) / 26);
+            int shown = 0;
             for (SyncManager.ClientRow row : clients) {
+                if (shown++ >= maxRows) {
+                    graphics.text(font, "§7…还有 " + (clients.size() - maxRows) + " 名玩家", 16, y, 0xFFFFFFFF, false);
+                    break;
+                }
                 graphics.fill(10, y, width - 10, y + 22, 0x30FFFFFF);
-                graphics.text(font, row.name, 16, y + 3, 0xFFFFFFFF, false);
+                UiKit.drawTrimmed(graphics, row.name, 16, y + 3, 90, 0xFFFFFFFF);
                 int color = switch (row.state) {
                     case "READY" -> UiKit.COLOR_OK;
                     case "FAILED", "DECLINED" -> UiKit.COLOR_ERROR;
@@ -91,27 +90,29 @@ public class SyncScreen extends Screen {
                 }
                 y += 26;
             }
-            graphics.text(font, "§7全部就绪后才能重启；重启会让所有已就绪的玩家一起重启以载入新模组。",
-                    10, height - 44, 0xFFFFFFFF, false);
+            UiKit.drawTrimmed(graphics,
+                    "§7全部就绪后才能重启；重启会让所有已就绪的玩家一起重启以载入新模组。",
+                    10, height - barHeight - 30, width - 20, 0xFFFFFFFF);
         } else {
             graphics.text(font, "§b玩家视图", 10, 46, 0xFFFFFFFF, false);
             graphics.text(font, "状态: " + sync.clientState(), 10, 62, 0xFFFFFFFF, false);
-            graphics.text(font, "§7" + (sync.clientMessage().isBlank() ? "等待房主下发模组清单…" : sync.clientMessage()),
-                    10, 76, 0xFFFFFFFF, false);
+            UiKit.drawTrimmed(graphics, "§7" + (sync.clientMessage().isBlank()
+                            ? "等待房主下发模组清单…" : sync.clientMessage()),
+                    10, 76, width - 20, 0xFFFFFFFF);
             if (sync.clientTotal() > 0) {
                 float fraction = Math.min(1f, sync.clientIndex() / (float) sync.clientTotal());
                 graphics.fill(10, 92, width - 10, 102, 0xFF202020);
                 graphics.fill(10, 92, 10 + (int) ((width - 20) * fraction), 102, UiKit.COLOR_ACCENT);
                 graphics.text(font, sync.clientIndex() + "/" + sync.clientTotal(), 12, 104, 0xFFFFFFFF, false);
             }
-            graphics.text(font, "§7玩家侧：接受后自动下载到 mods/，装完全部就绪；房主重启时本机跟着一起重启。",
-                    10, height - 44, 0xFFFFFFFF, false);
+            UiKit.drawTrimmed(graphics,
+                    "§7玩家侧：接受后自动下载到 mods/，装完全部就绪；房主重启时本机跟着一起重启。",
+                    10, height - barHeight - 30, width - 20, 0xFFFFFFFF);
         }
 
-        broadcastButton.visible = bridge.isHost();
-        restartButton.visible = bridge.isHost();
-        cancelButton.visible = bridge.isHost();
-        restartButton.active = sync.allClientsReady();
+        if (barRef != null) {
+            barRef.refresh();
+        }
     }
 
     @Override

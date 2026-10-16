@@ -39,40 +39,44 @@ public class HotLoadScreen extends Screen {
 
     @Override
     protected void init() {
-        int half = (width - 30) / 2;
-        pending.bounds(10, 74, half, Math.max(40, height - 74 - 62)).rowHeight(26);
-        plugins.bounds(20 + half, 74, half, Math.max(40, height - 74 - 62)).rowHeight(34);
+        ButtonBar bar = new ButtonBar()
+                .add("一键软重启并载入", 130, () -> !PackHub.hotLoad().pendingList().isEmpty(), () -> {
+                    status = "正在软重启，新进程会用同样的命令行启动…";
+                    if (!PackHub.hotLoad().softRestart()) {
+                        status = "软重启失败；已尝试生成 restart-minecraft.bat 到 config/packhub/";
+                    }
+                })
+                .add("立即热重载资源", 110, () -> {
+                    PackHub.hotLoad().reloadNow();
+                    status = "已触发热重载（资源包 / 光影 / 插件回调）";
+                })
+                .add("打开插件目录", 100, () -> ScreenUtil.openFolder(PackHub.hotLoad().plugins().pluginDir()))
+                .add("打开 mods", 90, () -> ScreenUtil.openFolder(PackHub.platform().modsDir()))
+                .add("复制重启命令", 100, () -> {
+                    ScreenUtil.copyToClipboard(GameRestarter.describeCommand());
+                    status = "已复制重启命令到剪贴板";
+                })
+                .add("刷新", 54, this::refresh)
+                .add("返回", 58, this::onClose);
+        int barHeight = bar.build(width, height, 6, this::addRenderableWidget);
+        restartButton = null;
+        reloadButton = null;
 
-        restartButton = addRenderableWidget(Button.builder(Component.literal("一键软重启并载入"), button -> {
-            status = "正在软重启，新进程会用同样的命令行启动…";
-            boolean started = PackHub.hotLoad().softRestart();
-            if (!started) {
-                status = "软重启失败；已尝试生成 restart-minecraft.bat 到 config/packhub/";
-            }
-        }).bounds(10, height - 54, 150, 20).build());
-
-        reloadButton = addRenderableWidget(Button.builder(Component.literal("立即热重载资源"), button -> {
-            PackHub.hotLoad().reloadNow();
-            status = "已触发热重载（资源包 / 光影 / 插件回调）";
-        }).bounds(166, height - 54, 140, 20).build());
-
-        addRenderableWidget(Button.builder(Component.literal("打开插件目录"), button ->
-                ScreenUtil.openFolder(PackHub.hotLoad().plugins().pluginDir()))
-                .bounds(312, height - 54, 110, 20).build());
-
-        addRenderableWidget(Button.builder(Component.literal("打开 mods"), button ->
-                ScreenUtil.openFolder(PackHub.platform().modsDir()))
-                .bounds(428, height - 54, 100, 20).build());
-
-        addRenderableWidget(Button.builder(Component.literal("复制重启命令"), button -> {
-            ScreenUtil.copyToClipboard(GameRestarter.describeCommand());
-            status = "已复制重启命令到剪贴板";
-        }).bounds(534, height - 54, 110, 20).build());
-
-        addRenderableWidget(Button.builder(Component.literal("刷新"), button -> refresh())
-                .bounds(width - 150, height - 54, 60, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("返回"), button -> onClose())
-                .bounds(width - 84, height - 54, 74, 20).build());
+        int contentTop = 74;
+        int contentBottom = height - 10 - barHeight - 18;
+        int gap = 10;
+        // 窄屏时改成上下两块（各占一半高度），避免左右各一半挤在一起看不清
+        boolean narrow = width < 420;
+        if (narrow) {
+            int halfHeight = Math.max(30, (contentBottom - contentTop - gap) / 2);
+            pending.bounds(10, contentTop, width - 20, halfHeight).rowHeight(24);
+            plugins.bounds(10, contentTop + halfHeight + gap, width - 20,
+                    Math.max(30, contentBottom - contentTop - halfHeight - gap)).rowHeight(30);
+        } else {
+            int half = (width - 30) / 2;
+            pending.bounds(10, contentTop, half, Math.max(30, contentBottom - contentTop)).rowHeight(26);
+            plugins.bounds(20 + half, contentTop, half, Math.max(30, contentBottom - contentTop)).rowHeight(34);
+        }
 
         refresh();
     }
@@ -134,16 +138,29 @@ public class HotLoadScreen extends Screen {
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
         UiKit.header(graphics, Component.literal("PackHub · 热加载控制台"), width);
-        graphics.text(font, "§7" + PackHub.hotLoad().backendSummary()
-                + " · 运行环境 " + PackHub.MINECRAFT_VERSION, 12, 30, 0xFFFFFFFF, false);
-        graphics.text(font, "§7" + status, 12, 42, 0xFFFFFFFF, false);
-        graphics.text(font, "§b待重启生效的模组", 12, 62, 0xFFFFFFFF, false);
-        graphics.text(font, "§b运行中的热加载插件", 20 + (width - 30) / 2, 62, 0xFFFFFFFF, false);
-        graphics.text(font, "§8说明：资源包/光影/数据包可真正热重载；普通 Fabric/NeoForge 模组受 JVM 与 Mixin 限制必须重启进程，"
-                + "PackHub 用“软重启”自动完成这一步。", 10, height - 26, 0xFFFFFFFF, false);
+        UiKit.drawTrimmed(graphics, "§7" + PackHub.hotLoad().backendSummary()
+                + " · 运行环境 " + PackHub.MINECRAFT_VERSION, 12, 30, width - 24, 0xFFFFFFFF);
+        UiKit.drawTrimmed(graphics, "§7" + status, 12, 42, width - 24, 0xFFFFFFFF);
+
+        boolean narrow = width < 420;
+        int contentTop = 74;
+        int labelY = contentTop - 12;
+        if (narrow) {
+            graphics.text(font, "§b待重启生效的模组", 12, labelY, 0xFFFFFFFF, false);
+            int pendingHeight = pending.height();
+            graphics.text(font, "§b运行中的热加载插件", 12, contentTop + pendingHeight + 10 - 12, 0xFFFFFFFF, false);
+        } else {
+            graphics.text(font, "§b待重启生效的模组", 12, labelY, 0xFFFFFFFF, false);
+            graphics.text(font, "§b运行中的热加载插件", 20 + (width - 30) / 2, labelY, 0xFFFFFFFF, false);
+        }
         pending.render(graphics, mouseX, mouseY);
         plugins.render(graphics, mouseX, mouseY);
-        restartButton.active = !PackHub.hotLoad().pendingList().isEmpty();
+
+        // 说明文字按宽度折行显示在内容区上方（不再是一行超长文本）
+        UiKit.drawWrapped(graphics,
+                "§8资源包 / 光影 / 数据包可真正热重载；普通 Fabric/NeoForge 模组受 JVM 与 Mixin 限制必须重启进程，"
+                        + "PackHub 用「软重启」自动完成这一步。",
+                10, height - 34, width - 20, 0xFFFFFFFF, 2);
     }
 
     @Override

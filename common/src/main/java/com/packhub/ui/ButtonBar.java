@@ -26,7 +26,21 @@ public final class ButtonBar {
     }
 
     private final List<Item> items = new ArrayList<>();
+    private final List<Object[]> builtButtons = new ArrayList<>();
     private boolean rightAligned;
+
+    /** 每帧调用：把 enabled 条件重新算一遍（例如「有选中项才能安装」）。 */
+    public void refresh() {
+        for (Object[] entry : builtButtons) {
+            Button button = (Button) entry[0];
+            BooleanSupplier enabled = (BooleanSupplier) entry[1];
+            try {
+                button.active = enabled.getAsBoolean();
+            } catch (Throwable ignored) {
+                button.active = true;
+            }
+        }
+    }
 
     public ButtonBar rightAligned() {
         this.rightAligned = true;
@@ -103,6 +117,7 @@ public final class ButtonBar {
                         .build();
                 button.active = item.enabled().getAsBoolean();
                 registrar.apply(button);
+                builtButtons.add(new Object[]{button, item.enabled()});
                 x += item.width() + GAP;
             }
         }

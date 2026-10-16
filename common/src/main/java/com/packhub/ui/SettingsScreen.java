@@ -27,6 +27,13 @@ public class SettingsScreen extends Screen {
     private EditBox curseForgeKeyBox;
     private String status = "改动会立即保存到 config/packhub.json";
 
+    // 自适应布局：每行标签与状态行的 y 由 init() 按屏幕尺寸算出来
+    private int apiLabelY = 26;
+    private int cdnLabelY = 58;
+    private int cfLabelY = 82;
+    private int statusY = 100;
+    private int listTop = 110;
+
     private record Setting(String title, String description, BooleanSupplier getter, Consumer<Boolean> setter) {
     }
 
@@ -39,7 +46,16 @@ public class SettingsScreen extends Screen {
     protected void init() {
         PackHubConfig config = PackHub.config();
 
-        apiBox = new EditBox(font, 10, 34, Math.max(80, width - 200), 20, Component.literal("Modrinth API 地址"));
+        // 宽屏：输入框 + 右侧按钮同排；窄屏：按钮换到下一行，输入框占满宽度
+        boolean wide = width >= 560;
+        int columnWidth = 96;
+        int inputWidth = wide
+                ? Math.max(90, width - 20 - columnWidth * 2 - 10)
+                : Math.max(80, width - 20);
+        int y = 26;
+
+        apiLabelY = y;
+        apiBox = new EditBox(font, 10, y + 10, inputWidth, 20, Component.literal("Modrinth API 地址"));
         apiBox.setMaxLength(256);
         apiBox.setValue(config.apiBase);
         apiBox.setResponder(value -> {
@@ -49,7 +65,37 @@ public class SettingsScreen extends Screen {
         });
         addRenderableWidget(apiBox);
 
-        cdnBox = new EditBox(font, 10, 58, Math.max(80, width - 200), 20, Component.literal("Modrinth CDN 镜像"));
+        if (wide) {
+            addRenderableWidget(Button.builder(Component.literal("测试连接"), button -> testModrinth())
+                    .bounds(width - 10 - columnWidth - 4 - 86, y + 10, 86, 20).build());
+            addRenderableWidget(Button.builder(Component.literal("恢复默认"), button -> {
+                config.apiBase = "https://api.modrinth.com/v2";
+                config.cdnBaseOverride = "";
+                apiBox.setValue(config.apiBase);
+                cdnBox.setValue("");
+                config.save();
+                PackHub.syncSettings();
+                status = "已恢复默认 Modrinth 地址";
+            }).bounds(width - 10 - 86, y + 10, 86, 20).build());
+            y += 34;
+        } else {
+            y += 34;
+            addRenderableWidget(Button.builder(Component.literal("测试连接"), button -> testModrinth())
+                    .bounds(10, y, 84, 20).build());
+            addRenderableWidget(Button.builder(Component.literal("恢复默认"), button -> {
+                config.apiBase = "https://api.modrinth.com/v2";
+                config.cdnBaseOverride = "";
+                apiBox.setValue(config.apiBase);
+                cdnBox.setValue("");
+                config.save();
+                PackHub.syncSettings();
+                status = "已恢复默认 Modrinth 地址";
+            }).bounds(98, y, 84, 20).build());
+            y += 24;
+        }
+
+        cdnLabelY = y;
+        cdnBox = new EditBox(font, 10, y + 10, inputWidth, 20, Component.literal("Modrinth CDN 镜像"));
         cdnBox.setMaxLength(256);
         cdnBox.setValue(config.cdnBaseOverride);
         cdnBox.setResponder(value -> {
@@ -59,8 +105,21 @@ public class SettingsScreen extends Screen {
         });
         addRenderableWidget(cdnBox);
 
-        curseForgeKeyBox = new EditBox(font, 10, 82, Math.max(80, width - 300), 20,
-                Component.literal("CurseForge API Key"));
+        if (wide) {
+            addRenderableWidget(Button.builder(Component.literal("打开配置目录"), button ->
+                    ScreenUtil.openFolder(PackHub.platform().configDir().resolve("packhub")))
+                    .bounds(width - 10 - 174, y + 10, 174, 20).build());
+            y += 34;
+        } else {
+            y += 34;
+            addRenderableWidget(Button.builder(Component.literal("打开配置目录"), button ->
+                    ScreenUtil.openFolder(PackHub.platform().configDir().resolve("packhub")))
+                    .bounds(10, y, 120, 20).build());
+            y += 24;
+        }
+
+        cfLabelY = y;
+        curseForgeKeyBox = new EditBox(font, 10, y + 10, inputWidth, 20, Component.literal("CurseForge API Key"));
         curseForgeKeyBox.setMaxLength(128);
         curseForgeKeyBox.setValue(config.curseForgeApiKey);
         curseForgeKeyBox.setHint(Component.literal("粘贴 console.curseforge.com 申请的 API Key"));
@@ -71,32 +130,33 @@ public class SettingsScreen extends Screen {
         });
         addRenderableWidget(curseForgeKeyBox);
 
-        addRenderableWidget(Button.builder(Component.literal("测试连接"), button -> testModrinth())
-                .bounds(width - 184, 34, 84, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("恢复默认"), button -> {
-            config.apiBase = "https://api.modrinth.com/v2";
-            config.cdnBaseOverride = "";
-            apiBox.setValue(config.apiBase);
-            cdnBox.setValue("");
-            config.save();
-            PackHub.syncSettings();
-            status = "已恢复默认 Modrinth 地址";
-        }).bounds(width - 96, 34, 86, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("打开配置目录"), button ->
-                ScreenUtil.openFolder(PackHub.platform().configDir().resolve("packhub")))
-                .bounds(width - 184, 58, 174, 20).build());
+        if (wide) {
+            addRenderableWidget(Button.builder(Component.literal("测试 CurseForge"), button -> testCurseForge())
+                    .bounds(width - 10 - 174 - 4 - 100, y + 10, 100, 20).build());
+            addRenderableWidget(Button.builder(Component.literal("申请 Key"), button ->
+                    ScreenUtil.openUrl("https://console.curseforge.com/"))
+                    .bounds(width - 10 - 174, y + 10, 174, 20).build());
+            y += 34;
+        } else {
+            y += 34;
+            addRenderableWidget(Button.builder(Component.literal("测试 CurseForge"), button -> testCurseForge())
+                    .bounds(10, y, 100, 20).build());
+            addRenderableWidget(Button.builder(Component.literal("申请 Key"), button ->
+                    ScreenUtil.openUrl("https://console.curseforge.com/"))
+                    .bounds(114, y, 84, 20).build());
+            y += 24;
+        }
 
-        addRenderableWidget(Button.builder(Component.literal("测试 CurseForge"), button -> testCurseForge())
-                .bounds(width - 292, 82, 100, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("申请 Key"), button ->
-                ScreenUtil.openUrl("https://console.curseforge.com/"))
-                .bounds(width - 184, 82, 174, 20).build());
+        statusY = y + 4;
+        listTop = y + 18;
 
-        settings.bounds(10, 110, width - 20, Math.max(40, height - 110 - 32)).rowHeight(26);
+        int barHeight = new ButtonBar()
+                .add("返回", 58, this::onClose)
+                .rightAligned()
+                .build(width, height, 6, this::addRenderableWidget);
+
+        settings.bounds(10, listTop, width - 20, Math.max(30, height - 10 - barHeight - listTop)).rowHeight(26);
         rebuild();
-
-        addRenderableWidget(Button.builder(Component.literal("返回"), button -> onClose())
-                .bounds(width - 84, height - 26, 74, 20).build());
     }
 
     private void rebuild() {
@@ -183,10 +243,10 @@ public class SettingsScreen extends Screen {
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
         UiKit.header(graphics, Component.literal("PackHub · 设置"), width);
-        graphics.text(font, "§7Modrinth API: ", 10, 26, 0xFFFFFFFF, false);
-        graphics.text(font, "§7Modrinth CDN 镜像: ", 10, 50, 0xFFFFFFFF, false);
-        graphics.text(font, "§7CurseForge Key: ", 10, 74, 0xFFFFFFFF, false);
-        graphics.text(font, "§7" + status, 10, 104, 0xFFFFFFFF, false);
+        graphics.text(font, "§7Modrinth API: ", 10, apiLabelY, 0xFFFFFFFF, false);
+        graphics.text(font, "§7Modrinth CDN 镜像: ", 10, cdnLabelY, 0xFFFFFFFF, false);
+        graphics.text(font, "§7CurseForge Key: ", 10, cfLabelY, 0xFFFFFFFF, false);
+        UiKit.drawTrimmed(graphics, "§7" + status, 10, statusY, width - 20, 0xFFFFFFFF);
         settings.render(graphics, mouseX, mouseY);
     }
 
