@@ -138,7 +138,7 @@ public final class ListPanel<T> {
         scroll = Math.max(0, Math.min(scroll, max));
     }
 
-    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         clampScroll();
         UiKit.panel(graphics, x, y, width, height);
         int first = (int) (scroll / rowHeight);

@@ -13,6 +13,8 @@ import com.packhub.util.Log;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
@@ -244,11 +246,14 @@ public class HubScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (results.mouseClicked(mouseX, mouseY, button)) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
+        double mouseX = UiKit.eventX(event);
+        double mouseY = UiKit.eventY(event);
+        int button = UiKit.eventButton(event);
+if (results.mouseClicked(mouseX, mouseY, button)) {
             return true;
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, doubled);
     }
 
     @Override
@@ -260,12 +265,15 @@ public class HubScreen extends Screen {
     }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == 257 || keyCode == 335) { // Enter / 小键盘 Enter
+    public boolean keyPressed(KeyEvent event) {
+        int keyCode = UiKit.eventKey(event);
+        int scanCode = 0;
+        int modifiers = 0;
+if (keyCode == 257 || keyCode == 335) { // Enter / 小键盘 Enter
             runSearch(0);
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(event);
     }
 
     @Override

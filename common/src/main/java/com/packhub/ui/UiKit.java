@@ -132,4 +132,51 @@ public final class UiKit {
         }
         return String.format("%.2f GiB", mb / 1024.0);
     }
+
+    // ------------------------------------------------------------ 输入事件取值
+    // 26.x 把鼠标/键盘事件换成了对象（MouseButtonEvent / KeyEvent），且字段名与访问器可能再变，
+    // 这里统一用反射读取，界面代码只依赖 eventX/eventY/eventButton/eventKey 四个方法。
+
+    public static double eventX(Object event) {
+        return readNumber(event, "x", "mouseX", "getX");
+    }
+
+    public static double eventY(Object event) {
+        return readNumber(event, "y", "mouseY", "getY");
+    }
+
+    public static int eventButton(Object event) {
+        return (int) readNumber(event, "button", "buttonIndex", "getButton");
+    }
+
+    public static int eventKey(Object event) {
+        return (int) readNumber(event, "key", "keyCode", "getKey");
+    }
+
+    private static double readNumber(Object target, String... candidates) {
+        if (target == null) {
+            return 0;
+        }
+        for (String candidate : candidates) {
+            try {
+                java.lang.reflect.Method method = target.getClass().getMethod(candidate);
+                Object value = method.invoke(target);
+                if (value instanceof Number number) {
+                    return number.doubleValue();
+                }
+            } catch (Throwable ignored) {
+                // 试下一个名字
+            }
+            try {
+                java.lang.reflect.Field field = target.getClass().getField(candidate);
+                Object value = field.get(target);
+                if (value instanceof Number number) {
+                    return number.doubleValue();
+                }
+            } catch (Throwable ignored) {
+                // 试下一个名字
+            }
+        }
+        return 0;
+    }
 }
