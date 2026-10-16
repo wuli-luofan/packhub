@@ -266,9 +266,9 @@ PackHub 定义了一种“不会触碰 Mixin、因此可以真正热加载”的
 | 文件 | 大小 | 校验过的内容 |
 | --- | --- | --- |
 | `packhub-fabric-1.0.2.jar` | 256,450 字节 | 139 个条目；含 `fabric.mod.json`（`version=1.0.2`，入口 `com.packhub.fabric.PackHubFabric`，`minecraft ~26.3`，`java >=25`，`fabric-api *`）、`com/packhub/**`（含 `sync/`、`search/`、`ui/ButtonBar`）、图标、中英语言文件 |
-| `packhub-neoforge-1.0.2.jar` | 254,666 字节 | 139 个条目；含 `META-INF/neoforge.mods.toml`（入口 `com.packhub.neoforge.PackHubNeoForge`，`neoforge [26.3,)`，`minecraft [26.3,26.4)`）、`com/packhub/**`（含 `NeoForgeNetwork`）、图标、中英语言文件 |
+| `packhub-neoforge-1.0.2.jar` | 255,048 字节 | 139 个条目；含 `META-INF/neoforge.mods.toml`（入口 `com.packhub.neoforge.PackHubNeoForge`，`neoforge [26.3,)`，`minecraft [26.3,26.4)`）、`com/packhub/**`（含 `NeoForgeNetwork`）、图标、中英语言文件 |
 | `packhub-fabric-1.0.2-sources.jar` | 126,333 字节 | 源码 jar |
-| `packhub-neoforge-1.0.2-sources.jar` | 126,465 字节 | 源码 jar |
+| `packhub-neoforge-1.0.2-sources.jar` | 126,821 字节 | 源码 jar |
 
 同时 CI 里 **离线逻辑测试 30/30、Mock 服务器测试 13/13**、真实 Modrinth 冒烟测试也都是 success。
 
